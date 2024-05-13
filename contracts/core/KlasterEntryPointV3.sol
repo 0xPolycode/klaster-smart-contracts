@@ -3,7 +3,7 @@
  ** Only one instance required on each chain.
  **/
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.23;
 
 /* solhint-disable avoid-low-level-calls */
 /* solhint-disable no-inline-assembly */
@@ -14,11 +14,11 @@ import "@account-abstraction/contracts/utils/Exec.sol";
 import "@account-abstraction/contracts/core/SenderCreator.sol";
 import "@account-abstraction/contracts/core/Helpers.sol";
 import "@account-abstraction/contracts/core/NonceManager.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "../interfaces/IKlasterEntrypoint.sol";
 
-contract EntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
+contract KlasterEntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
 
     using UserOperationLib for UserOperation;
 
@@ -54,13 +54,13 @@ contract EntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
      * @param opIndex index into the opInfo array
      * @param userOp the userOp to execute
      * @param opInfo the opInfo filled by validatePrepayment for this userOp.
-     * @return collected the total amount this userOp paid.
      */
-    function _executeUserOp(uint256 opIndex, UserOperation calldata userOp, UserOpInfo memory opInfo) private returns (uint256 collected) {
+    function _executeUserOp(uint256 opIndex, UserOperation calldata userOp, UserOpInfo memory opInfo) private returns (uint256 totalGasCast, uint256 innerOpGas) {
         uint256 preGas = gasleft();
 
-        try this.innerHandleOp(userOp.callData, opInfo) returns (uint256 _actualGasCost) {
-            collected = _actualGasCost;
+        try this.innerHandleOp(userOp.callData, opInfo) returns (uint256 _totalGasCost, uint256 _innerOpGas) {
+            innerOpGas = _innerOpGas;
+            totalGasCast = _totalGasCost;
         } catch {
             bytes32 innerRevertCode;
             assembly {
@@ -74,8 +74,8 @@ contract EntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
                 revert FailedOp(opIndex, "AA95 out of gas");
             }
 
-            uint256 actualGas = preGas - gasleft() + opInfo.preOpGas;
-            collected = _handlePostOp(opInfo, actualGas);
+            innerOpGas = preGas - gasleft();
+            totalGasCast = _handlePostOp(opInfo, innerOpGas + opInfo.preOpGas);
         }
     }
 
@@ -103,7 +103,8 @@ contract EntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
         emit BeforeExecution();
 
         for (uint256 i = 0; i < opslen; i++) {
-            collected += _executeUserOp(i, ops[i][opInfos[i].userOpIndex], opInfos[i]);
+            (uint256 _collected, ) = _executeUserOp(i, ops[i][opInfos[i].userOpIndex], opInfos[i]);
+            collected += _collected;
         }
     } //unchecked
     }
@@ -122,14 +123,14 @@ contract EntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
         ValidationData memory data = _parseValidationData(validationData);
 
         numberMarker();
-        uint256 paid = _executeUserOp(0, userOps[opInfo.userOpIndex], opInfo); 
+        (uint256 paid, uint256 opGas) = _executeUserOp(0, userOps[opInfo.userOpIndex], opInfo); 
         numberMarker();
         bool targetSuccess;
         bytes memory targetResult;
         if (target != address(0)) {
             (targetSuccess, targetResult) = target.call(targetCallData);
         }
-        revert ExecutionResult(opInfo.preOpGas, paid, data.validAfter, data.validUntil, targetSuccess, targetResult);
+        revert ExecutionResult(opInfo.preOpGas, opGas, paid, data.validAfter, data.validUntil, targetSuccess, targetResult);
     }
 
     function simulateHandleOpNoSigCheck(
@@ -145,14 +146,14 @@ contract EntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
         ValidationData memory data = _parseValidationData(validationData);
 
         numberMarker();
-        uint256 paid = _executeUserOp(0, userOps[opInfo.userOpIndex], opInfo); 
+        (uint256 paid, uint256 opGas) = _executeUserOp(0, userOps[opInfo.userOpIndex], opInfo); 
         numberMarker();
         bool targetSuccess;
         bytes memory targetResult;
         if (target != address(0)) {
             (targetSuccess, targetResult) = target.call(targetCallData);
         }
-        revert ExecutionResult(opInfo.preOpGas, paid, data.validAfter, data.validUntil, targetSuccess, targetResult);
+        revert ExecutionResult(opInfo.preOpGas, opGas, paid, data.validAfter, data.validUntil, targetSuccess, targetResult);
     }
 
 
@@ -179,7 +180,7 @@ contract EntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
      * inner function to handle a UserOperation.
      * Must be declared "external" to open a call context, but it can only be called by handleOps.
      */
-    function innerHandleOp(bytes memory callData, UserOpInfo memory opInfo) external returns (uint256 actualGasCost) {
+    function innerHandleOp(bytes memory callData, UserOpInfo memory opInfo) external returns (uint256 totalGasCost, uint256 innerOpGas) {
         uint256 preGas = gasleft();
         require(msg.sender == address(this), "AA92 internal call only");
         MemoryUserOp memory mUserOp = opInfo.mUserOp;
@@ -206,9 +207,9 @@ contract EntryPoint is IKlasterEntryPoint, NonceManager, ReentrancyGuard {
         }
 
         unchecked {
-            uint256 actualGas = preGas - gasleft() + opInfo.preOpGas;
+            innerOpGas = preGas - gasleft();
+            totalGasCost = _handlePostOp(opInfo, innerOpGas + opInfo.preOpGas);
             //note: opIndex is ignored (relevant only if mode==postOpReverted, which is only possible outside of innerHandleOp)
-            return _handlePostOp(opInfo, actualGas);
         }
     }
 

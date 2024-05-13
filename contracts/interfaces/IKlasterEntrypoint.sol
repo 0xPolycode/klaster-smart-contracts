@@ -3,7 +3,7 @@
  ** Only one instance required on each chain.
  **/
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.7.5;
+pragma solidity ^0.8.23;
 
 /* solhint-disable avoid-low-level-calls */
 /* solhint-disable no-inline-assembly */
@@ -11,6 +11,7 @@ pragma solidity >=0.7.5;
 
 // import "./UserOperation.sol";
 // import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+// import "../interfaces/UserOperation.sol";
 import "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "@account-abstraction/contracts/interfaces/INonceManager.sol";
 
@@ -93,7 +94,7 @@ interface IKlasterEntryPoint is INonceManager {
     /**
      * return value of simulateHandleOp
      */
-    error ExecutionResult(uint256 preOpGas, uint256 paid, uint48 validAfter, uint48 validUntil, bool targetSuccess, bytes targetResult);
+    error ExecutionResult(uint256 preOpGas, uint256 opGas, uint256 paid, uint48 validAfter, uint48 validUntil, bool targetSuccess, bytes targetResult);
 
     /**
      * An event emitted by handleOps(), before starting the execution loop.
