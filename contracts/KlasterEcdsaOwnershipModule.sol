@@ -1,28 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {BaseAuthorizationModule} from "./BaseAuthorizationModule.sol";
+import {BaseAuthorizationModule} from "./modules/BaseAuthorizationModule.sol";
 import "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import "@account-abstraction/contracts/core/Helpers.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
+
 /**
- * @title ECDSA ownership Authorization module for Biconomy Smart Accounts.
+ * @title Klaster ECDSA ownership Authorization module for Biconomy Smart Accounts compatible with the Klaster execution network.
  * @dev Compatible with Biconomy Modular Interface v 0.1
- *         - It allows to validate user operations signed by EOA private key.
+ *         - It allows to validate a part of iTx signed by EOA private key.
  *         - EIP-1271 compatible (ensures Smart Account can validate signed messages).
  *         - One owner per Smart Account.
  *         - Does not support outdated eth_sign flow for cheaper validations
  *         (see https://support.metamask.io/hc/en-us/articles/14764161421467-What-is-eth-sign-and-why-is-it-a-risk-)
  * !!!!!!! Only EOA owners supported, no Smart Account Owners
  *         For Smart Contract Owners check SmartContractOwnership module instead
- * @author Fil Makarov - <filipp.makarov@biconomy.io>
+ * 
  */
 
-contract EcdsaOwnershipRegistryModule is BaseAuthorizationModule {
+contract KlasterECDSAOwnershipRegistryModule is BaseAuthorizationModule {
     using ECDSA for bytes32;
+    using UserOperationLib for UserOperation;
 
-    string public constant NAME = "ECDSA Ownership Registry Module";
-    string public constant VERSION = "0.2.0";
+    string public constant NAME = "Klaster ECDSA Ownership Registry Module";
+    string public constant VERSION = "0.1.0";
     mapping(address => address) internal _smartAccountOwners;
 
     event OwnershipTransferred(
@@ -81,6 +85,25 @@ contract EcdsaOwnershipRegistryModule is BaseAuthorizationModule {
         return owner;
     }
 
+    function getUserOpHash(
+        UserOperation calldata userOp,
+        uint256 lowerBoundTimestamp,
+        uint256 upperBoundTimestamp,
+        address klasterEntryPoint
+    ) public view returns (bytes32 userOpHash) {
+        userOpHash = keccak256(
+            bytes.concat(
+                keccak256(abi.encode(
+                    userOp.hash(),
+                    lowerBoundTimestamp,
+                    upperBoundTimestamp,
+                    klasterEntryPoint,
+                    block.chainid
+                ))
+            )
+        );
+    }
+
     /**
      * @dev validates userOperation
      * @param userOp User Operation to be validated.
@@ -91,14 +114,34 @@ contract EcdsaOwnershipRegistryModule is BaseAuthorizationModule {
         UserOperation calldata userOp,
         bytes32 userOpHash
     ) external view virtual returns (uint256) {
-        (bytes memory cleanEcdsaSignature, ) = abi.decode(
+
+        (bytes memory sigBytes, ) = abi.decode(
             userOp.signature,
             (bytes, address)
         );
-        if (_verifySignature(userOpHash, cleanEcdsaSignature, userOp.sender)) {
-            return VALIDATION_SUCCESS;
+        
+        (
+            bytes32 iTxHash,
+            bytes32[] memory proof,
+            uint48 lowerBoundTimestamp,
+            uint48 upperBoundTimestamp,
+            bytes memory userEcdsaSignature,
+            address klasterEntryPoint
+        ) = abi.decode(
+            sigBytes,
+            (bytes32, bytes32[], uint48, uint48, bytes, address)
+        );
+
+        bytes32 calculatedUserOpHash = getUserOpHash(userOp, lowerBoundTimestamp, upperBoundTimestamp, klasterEntryPoint);
+        if (!_validateUserOpHash(calculatedUserOpHash, iTxHash, proof)) {
+            return SIG_VALIDATION_FAILED;
         }
-        return SIG_VALIDATION_FAILED;
+        
+        if (!_verifySignature(iTxHash, userEcdsaSignature, userOp.sender)) {
+            return SIG_VALIDATION_FAILED;
+        }
+
+        return _packValidationData(false, upperBoundTimestamp, lowerBoundTimestamp);
     }
 
     /**
@@ -146,6 +189,10 @@ contract EcdsaOwnershipRegistryModule is BaseAuthorizationModule {
         address _oldOwner = _smartAccountOwners[smartAccount];
         _smartAccountOwners[smartAccount] = newOwner;
         emit OwnershipTransferred(smartAccount, _oldOwner, newOwner);
+    }
+
+    function _validateUserOpHash(bytes32 userOpHash, bytes32 iTxHash, bytes32[] memory proof) private pure returns (bool) {
+        return MerkleProof.verify(proof, iTxHash, userOpHash);
     }
 
     /**

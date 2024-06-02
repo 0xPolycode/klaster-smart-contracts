@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
+// Source file: https://github.com/bcnmy/scw-contracts/blob/main/contracts/smart-account/interfaces/IAuthorizationModule.sol
 pragma solidity ^0.8.23;
-// import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+
 import "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 // interface for modules to verify singatures signed over userOpHash

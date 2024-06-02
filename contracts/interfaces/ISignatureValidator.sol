@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-only
+// Source file: https://github.com/bcnmy/scw-contracts/blob/main/contracts/smart-account/interfaces/ISignatureValidator.sol
 pragma solidity ^0.8.17;
 
 contract ISignatureValidatorConstants {

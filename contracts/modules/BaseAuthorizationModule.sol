@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Source file: https://github.com/bcnmy/scw-contracts/blob/main/contracts/smart-account/modules/BaseAuthorizationModule.sol
 pragma solidity ^0.8.23;
 
 /* solhint-disable no-empty-blocks */
