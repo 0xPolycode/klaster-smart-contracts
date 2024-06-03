@@ -12,7 +12,7 @@ Klaster protocol is a commitment & execution layer above all other blockchain ne
 
 Klaster protocol works with **iTx's** (inter chain transactions). This is a bundle of transactions targeting different blockchain networks, that may or may not be dependent on one another.
 
-Klaster nodes as a part of Klaster network. They receive user's iTx bundles, they generate merkle root iTx hash for the given bundle and commit to the user to execute their full iTx bundle for a given percentage premium taken on top of every userOp.
+Klaster nodes are a part of Klaster network. They receive user's iTx bundles, they generate merkle root iTx hash for the given bundle and commit to the user to execute their full iTx bundle for a given percentage premium taken on top of every userOp tx execution cost.
 
 Every transaction in the iTx bundle is actually a *UserOp* transaction as defined in the [4337 stack](https://www.erc4337.io/), with an additional new fields appended on top of *UserOp* data model:
 
@@ -79,7 +79,7 @@ This contract is modeled on top of the audited Biconomy's [EcdsaOwnershipRegistr
 
 ```0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789```
 
-KlasterPaymaster allows Klaster nodes to execute userOps by using the KlasterPaymaster as a proxy and is responsible for:
+In a way it acts as an 4337 EntryPoint wrapper **AND** a Paymaster. It allows Klaster nodes to execute userOps by using the KlasterPaymaster as a proxy and is responsible for:
 
 1. executing UserOps as a part of iTx bundles
 2. calculating total gas spent on the UserOp execution and then giving back the refund to the user
