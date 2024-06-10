@@ -1,0 +1,3 @@
+[submodule "biconomy"]
+	path = biconomy
+	url = https://github.com/bcnmy/scw-contracts

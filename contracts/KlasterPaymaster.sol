@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.23;
+pragma solidity 0.8.17;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@account-abstraction/contracts/core/BasePaymaster.sol";
@@ -50,6 +50,7 @@ contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
      * @param actualGasCost - actual gas used so far (without this postOp call).
      */
     function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) internal virtual override {
+        if (mode == PostOpMode.postOpReverted) { return; }
         (
             address sender,
             uint256 maxFeePerGas,
@@ -60,7 +61,7 @@ contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
         uint256 costWithPremium = actualGasCost * (100 + nodeOperatorPremium) / 100;
         uint256 maxCost = maxGasLimit * maxFeePerGas;
         uint256 totalUserCost = min(costWithPremium, maxCost);
-        
+
         if (totalUserCost < maxCost) {
             entryPoint.withdrawTo(
                 payable(sender),

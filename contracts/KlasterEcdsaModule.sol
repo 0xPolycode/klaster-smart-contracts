@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.23;
+pragma solidity 0.8.17;
 
-import {BaseAuthorizationModule} from "./modules/BaseAuthorizationModule.sol";
+import {BaseAuthorizationModule} from "../biconomy/contracts/smart-account/modules/BaseAuthorizationModule.sol";
 import "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "@account-abstraction/contracts/core/Helpers.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
 
 /**
  * @title Klaster ECDSA ownership Authorization module for Biconomy Smart Accounts compatible with the Klaster execution network.
@@ -20,12 +19,11 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  *         For Smart Contract Owners check SmartContractOwnership module instead
  * 
  */
-
-contract KlasterECDSAOwnershipRegistryModule is BaseAuthorizationModule {
+contract KlasterEcdsaModule is BaseAuthorizationModule {
     using ECDSA for bytes32;
     using UserOperationLib for UserOperation;
 
-    string public constant NAME = "Klaster ECDSA Ownership Registry Module";
+    string public constant NAME = "Klaster ECDSA Module";
     string public constant VERSION = "0.1.0";
     mapping(address => address) internal _smartAccountOwners;
 
@@ -88,8 +86,7 @@ contract KlasterECDSAOwnershipRegistryModule is BaseAuthorizationModule {
     function getUserOpHash(
         UserOperation calldata userOp,
         uint256 lowerBoundTimestamp,
-        uint256 upperBoundTimestamp,
-        address klasterEntryPoint
+        uint256 upperBoundTimestamp
     ) public view returns (bytes32 userOpHash) {
         userOpHash = keccak256(
             bytes.concat(
@@ -97,7 +94,6 @@ contract KlasterECDSAOwnershipRegistryModule is BaseAuthorizationModule {
                     userOp.hash(),
                     lowerBoundTimestamp,
                     upperBoundTimestamp,
-                    klasterEntryPoint,
                     block.chainid
                 ))
             )
@@ -119,20 +115,19 @@ contract KlasterECDSAOwnershipRegistryModule is BaseAuthorizationModule {
             userOp.signature,
             (bytes, address)
         );
-        
+
         (
             bytes32 iTxHash,
             bytes32[] memory proof,
             uint48 lowerBoundTimestamp,
             uint48 upperBoundTimestamp,
-            bytes memory userEcdsaSignature,
-            address klasterEntryPoint
+            bytes memory userEcdsaSignature
         ) = abi.decode(
             sigBytes,
-            (bytes32, bytes32[], uint48, uint48, bytes, address)
+            (bytes32, bytes32[], uint48, uint48, bytes)
         );
 
-        bytes32 calculatedUserOpHash = getUserOpHash(userOp, lowerBoundTimestamp, upperBoundTimestamp, klasterEntryPoint);
+        bytes32 calculatedUserOpHash = getUserOpHash(userOp, lowerBoundTimestamp, upperBoundTimestamp);
         if (!_validateUserOpHash(calculatedUserOpHash, iTxHash, proof)) {
             return SIG_VALIDATION_FAILED;
         }

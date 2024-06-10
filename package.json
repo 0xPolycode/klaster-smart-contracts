@@ -11,7 +11,15 @@
   "license": "ISC",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.3"
+    "@openzeppelin/merkle-tree": "^1.0.6",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "hardhat": "^2.22.3",
+    "hardhat-dependency-compiler": "^1.1.4",
+    "hardhat-deploy": "^0.12.4",
+    "hardhat-deploy-ethers": "^0.4.2",
+    "solc": "^0.8.17",
+    "typechain": "^8.3.2"
   },
   "dependencies": {
     "@account-abstraction/contracts": "0.6.0",
