@@ -7,20 +7,22 @@ import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import "@account-abstraction/contracts/core/Helpers.sol";
 
 contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
+    constructor(IEntryPoint _entryPoint) payable BasePaymaster(_entryPoint) {}
 
-    constructor(
-        IEntryPoint _entryPoint
-    ) payable BasePaymaster(_entryPoint) { }
-
-    function handleOps(
-        UserOperation[] calldata ops
-    ) payable public {
+    function handleOps(UserOperation[] calldata ops) public payable {
         entryPoint.depositTo{value: msg.value}(address(this));
-        entryPoint.handleOps(ops, payable(msg.sender));        
-        entryPoint.withdrawTo(payable(msg.sender), entryPoint.getDepositInfo(address(this)).deposit);
+        entryPoint.handleOps(ops, payable(msg.sender));
+        entryPoint.withdrawTo(
+            payable(msg.sender),
+            entryPoint.getDepositInfo(address(this)).deposit
+        );
     }
 
-    function simulateHandleOp(UserOperation calldata op, address target, bytes calldata callData) external payable {
+    function simulateHandleOp(
+        UserOperation calldata op,
+        address target,
+        bytes calldata callData
+    ) external payable {
         entryPoint.depositTo{value: msg.value}(address(this));
         entryPoint.simulateHandleOp(op, target, callData);
     }
@@ -31,10 +33,29 @@ contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
     }
 
     // accept all userOps
-    function _validatePaymasterUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost)
-    internal virtual override returns (bytes memory context, uint256 validationData) {
-        (uint256 maxGasLimit, uint256 nodeOperatorPremium) = abi.decode(userOp.paymasterAndData[20:], (uint256, uint256));
-        return (abi.encode(userOp.sender, userOp.maxFeePerGas, maxGasLimit, nodeOperatorPremium), 0);
+    function _validatePaymasterUserOp(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 maxCost
+    )
+        internal
+        virtual
+        override
+        returns (bytes memory context, uint256 validationData)
+    {
+        (uint256 maxGasLimit, uint256 nodeOperatorPremium) = abi.decode(
+            userOp.paymasterAndData[20:],
+            (uint256, uint256)
+        );
+        return (
+            abi.encode(
+                userOp.sender,
+                userOp.maxFeePerGas,
+                maxGasLimit,
+                nodeOperatorPremium
+            ),
+            0
+        );
     }
 
     /**
@@ -49,8 +70,14 @@ contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
      * @param context - the context value returned by validatePaymasterUserOp
      * @param actualGasCost - actual gas used so far (without this postOp call).
      */
-    function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) internal virtual override {
-        if (mode == PostOpMode.postOpReverted) { return; }
+    function _postOp(
+        PostOpMode mode,
+        bytes calldata context,
+        uint256 actualGasCost
+    ) internal virtual override {
+        if (mode == PostOpMode.postOpReverted) {
+            return;
+        }
         (
             address sender,
             uint256 maxFeePerGas,
@@ -58,15 +85,13 @@ contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
             uint256 nodeOperatorPremium
         ) = abi.decode(context, (address, uint256, uint256, uint256));
 
-        uint256 costWithPremium = actualGasCost * (100 + nodeOperatorPremium) / 100;
+        uint256 costWithPremium = (actualGasCost *
+            (100 + nodeOperatorPremium)) / 100;
         uint256 maxCost = maxGasLimit * maxFeePerGas;
         uint256 totalUserCost = min(costWithPremium, maxCost);
 
         if (totalUserCost < maxCost) {
-            entryPoint.withdrawTo(
-                payable(sender),
-                maxCost - totalUserCost
-            );
+            entryPoint.withdrawTo(payable(sender), maxCost - totalUserCost);
         }
     }
 

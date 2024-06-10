@@ -11,6 +11,12 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: "0.8.17",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 800
+          }
+        }
       }
     ],
   },
@@ -21,12 +27,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      // accounts: {
-      //   accountsBalance: "10000000000000000000000000",
-      //   //   mnemonic: MNEMONIC,
-      // },
       allowUnlimitedContractSize: true,
-      // chainId: 31337,
     }
   },
   namedAccounts: {

@@ -17,7 +17,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  *         (see https://support.metamask.io/hc/en-us/articles/14764161421467-What-is-eth-sign-and-why-is-it-a-risk-)
  * !!!!!!! Only EOA owners supported, no Smart Account Owners
  *         For Smart Contract Owners check SmartContractOwnership module instead
- * 
+ *
  */
 contract KlasterEcdsaModule is BaseAuthorizationModule {
     using ECDSA for bytes32;
@@ -90,12 +90,14 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
     ) public view returns (bytes32 userOpHash) {
         userOpHash = keccak256(
             bytes.concat(
-                keccak256(abi.encode(
-                    userOp.hash(),
-                    lowerBoundTimestamp,
-                    upperBoundTimestamp,
-                    block.chainid
-                ))
+                keccak256(
+                    abi.encode(
+                        userOp.hash(),
+                        lowerBoundTimestamp,
+                        upperBoundTimestamp,
+                        block.chainid
+                    )
+                )
             )
         );
     }
@@ -110,7 +112,6 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
         UserOperation calldata userOp,
         bytes32 userOpHash
     ) external view virtual returns (uint256) {
-
         (bytes memory sigBytes, ) = abi.decode(
             userOp.signature,
             (bytes, address)
@@ -122,21 +123,27 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
             uint48 lowerBoundTimestamp,
             uint48 upperBoundTimestamp,
             bytes memory userEcdsaSignature
-        ) = abi.decode(
-            sigBytes,
-            (bytes32, bytes32[], uint48, uint48, bytes)
-        );
+        ) = abi.decode(sigBytes, (bytes32, bytes32[], uint48, uint48, bytes));
 
-        bytes32 calculatedUserOpHash = getUserOpHash(userOp, lowerBoundTimestamp, upperBoundTimestamp);
+        bytes32 calculatedUserOpHash = getUserOpHash(
+            userOp,
+            lowerBoundTimestamp,
+            upperBoundTimestamp
+        );
         if (!_validateUserOpHash(calculatedUserOpHash, iTxHash, proof)) {
             return SIG_VALIDATION_FAILED;
         }
-        
+
         if (!_verifySignature(iTxHash, userEcdsaSignature, userOp.sender)) {
             return SIG_VALIDATION_FAILED;
         }
 
-        return _packValidationData(false, upperBoundTimestamp, lowerBoundTimestamp);
+        return
+            _packValidationData(
+                false,
+                upperBoundTimestamp,
+                lowerBoundTimestamp
+            );
     }
 
     /**
@@ -186,7 +193,11 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
         emit OwnershipTransferred(smartAccount, _oldOwner, newOwner);
     }
 
-    function _validateUserOpHash(bytes32 userOpHash, bytes32 iTxHash, bytes32[] memory proof) private pure returns (bool) {
+    function _validateUserOpHash(
+        bytes32 userOpHash,
+        bytes32 iTxHash,
+        bytes32[] memory proof
+    ) private pure returns (bool) {
         return MerkleProof.verify(proof, iTxHash, userOpHash);
     }
 

@@ -18,6 +18,8 @@
     "hardhat-dependency-compiler": "^1.1.4",
     "hardhat-deploy": "^0.12.4",
     "hardhat-deploy-ethers": "^0.4.2",
+    "prettier": "^3.3.1",
+    "prettier-eslint": "^16.3.0",
     "solc": "^0.8.17",
     "typechain": "^8.3.2"
   },

@@ -1,3 +1,5 @@
+import { BigNumberish, BytesLike } from "ethers";
+
 export type KlasterUserOp = {
   userOp: UserOp;
   lowerBoundTimestamp: string;
@@ -5,11 +7,19 @@ export type KlasterUserOp = {
   chainId: string;
 };
 
-export type SignedKlasterUserOp = {
-  userOp: SignedUserOp;
-  lowerBoundTimestamp: string;
-  upperBoundTimestamp: string;
-  chainId: string;
+/**
+ * ERC-4337 Types
+ */
+export type PaymasterAndData = {
+  paymaster: string;
+  maxGasLimit: string;
+  nodePremium: string;
+};
+
+export type ValidationData = {
+  validAfter: number;
+  validUntil: number;
+  status: number;
 };
 
 export type UserOp = {
@@ -28,3 +38,13 @@ export type UserOp = {
 export type SignedUserOp = UserOp & {
   signature: string;
 };
+
+/**
+ * Solidity Types
+ */
+export type address = string;
+export type uint256 = BigNumberish;
+export type uint = BigNumberish;
+export type uint64 = BigNumberish;
+export type bytes = BytesLike;
+export type bytes32 = BytesLike;

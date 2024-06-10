@@ -3,7 +3,7 @@ import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { KlasterUserOp, UserOp } from "../types";
 
 export function getMerkleTree(
-  klasterUserOps: KlasterUserOp[]
+  klasterUserOps: KlasterUserOp[],
 ): StandardMerkleTree<string[]> {
   return StandardMerkleTree.of(
     klasterUserOps.map((it) => {
@@ -14,7 +14,7 @@ export function getMerkleTree(
 }
 
 export function klasterUserOpToMerkleLeaf(
-  klasterUserOp: KlasterUserOp
+  klasterUserOp: KlasterUserOp,
 ): string[] {
   return [
     get4337UserOpHash(klasterUserOp.userOp),
@@ -25,9 +25,7 @@ export function klasterUserOpToMerkleLeaf(
 }
 
 export function getKlasterUserOpHash(klasterUserOp: KlasterUserOp): string {
-  return ethers.keccak256(
-    ethers.keccak256(encodeKlasterUserOp(klasterUserOp)),
-  );
+  return ethers.keccak256(ethers.keccak256(encodeKlasterUserOp(klasterUserOp)));
 }
 
 function encodeKlasterUserOp(klasterUserOp: KlasterUserOp): string {

@@ -9,10 +9,10 @@ contract DeterministicDeployFactory {
         assembly {
             addr := create2(0, add(bytecode, 0x20), mload(bytecode), _salt)
             if iszero(extcodesize(addr)) {
-        revert(0, 0)
-      }
-    }
+                revert(0, 0)
+            }
+        }
 
-    emit Deploy(addr);
+        emit Deploy(addr);
     }
 }
