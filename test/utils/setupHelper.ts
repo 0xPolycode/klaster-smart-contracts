@@ -124,3 +124,18 @@ export const deployContract = async (
   const receipt = await transaction.wait();
   return new Contract(receipt!.contractAddress!, output.interface, deployer);
 };
+
+export const computeWalletAddress = async (
+  smartAccountOwner: string,
+  smartAccountIndex: number,
+): Promise<string> => {
+  const scaFactory = await getSmartAccountFactory();
+  const klasterModule = await getKlasterModule();
+  return scaFactory.getAddressForCounterFactualAccount(
+    klasterModule.target,
+    klasterModule.interface.encodeFunctionData("initForSmartAccount", [
+      smartAccountOwner,
+    ]),
+    smartAccountIndex,
+  );
+};

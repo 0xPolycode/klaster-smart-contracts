@@ -12,7 +12,11 @@ import {
   UserOp,
   ValidationData,
 } from "../types";
-import { getMerkleTree, klasterUserOpToMerkleLeaf } from "./merkleTree";
+import {
+  getKlasterUserOpHash,
+  getMerkleTree,
+  klasterUserOpToMerkleLeaf,
+} from "./merkleTree";
 
 export function parseValidationData(
   validateUserOpResult: bigint,
@@ -43,6 +47,7 @@ export async function fillUserOp(
   createSender: boolean,
   userOpOverrides: Partial<UserOp>,
   signer: ethers.Signer,
+  nonceKey = 0,
 ): Promise<SignedUserOp> {
   const scaImpl = await getSmartAccountImplementation();
   const scaFactory = await getSmartAccountFactory();
@@ -88,7 +93,7 @@ export async function fillUserOp(
   const maxFeePerGas = feeData.maxFeePerGas!.toString();
   const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas!.toString();
 
-  const nonce = (await entryPoint.getNonce(sender, 0)).toString();
+  const nonce = (await entryPoint.getNonce(sender, nonceKey)).toString();
   const callData = scaImpl.interface.encodeFunctionData("execute", [
     to,
     value,
@@ -107,30 +112,17 @@ export async function fillUserOp(
     ),
   ]);
 
-  let signaturePlaceholder =
-    "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-  let dummyProofHash =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
-  let itxHashPlaceholder =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
-  let inclusionProofPlaceholder = [dummyProofHash];
-  let lowerBoundTimestamp = 0;
-  let upperBoundTimestamp = 0;
-
-  let signatureBytes = ethers.AbiCoder.defaultAbiCoder().encode(
-    ["bytes32", "bytes32[]", "uint48", "uint48", "bytes"],
-    [
-      itxHashPlaceholder,
-      inclusionProofPlaceholder,
-      lowerBoundTimestamp,
-      upperBoundTimestamp,
-      signaturePlaceholder,
+  const signature = await encodeSig({
+    itxHash:
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
+    proof: [
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
     ],
-  );
-  let signature = ethers.AbiCoder.defaultAbiCoder().encode(
-    ["bytes", "address"],
-    [signatureBytes, klasterModule.target],
-  );
+    lowerBoundTimestamp: "0",
+    upperBoundTimestamp: "0",
+    signature:
+      "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  });
 
   let userOp = {
     sender,
@@ -148,6 +140,75 @@ export async function fillUserOp(
   };
 
   return userOp;
+}
+
+export async function fillAndSignMany(
+  masterWallet: string,
+  salt: number,
+  to: string[],
+  value: bigint[],
+  data: string[],
+  createSender: boolean[],
+  lowerBoundTimestamp: string,
+  upperBoundTimestamp: string,
+  signer: ethers.Signer,
+  chainId: string,
+  nonceKey: number[],
+) {
+  let userOps: UserOp[] = [];
+  for (let i = 0; i < to.length; i++) {
+    userOps.push(
+      await fillUserOp(
+        masterWallet,
+        salt,
+        to[i],
+        value[i],
+        data[i],
+        createSender[i],
+        {},
+        signer,
+        nonceKey[i],
+      ),
+    );
+  }
+
+  let merkleTree = getMerkleTree(
+    userOps.map((it, i) => {
+      return {
+        userOp: it,
+        lowerBoundTimestamp: lowerBoundTimestamp,
+        upperBoundTimestamp: upperBoundTimestamp,
+        chainId,
+      };
+    }),
+  );
+
+  let itxHash = merkleTree.root;
+  let itxHashSigned = await signer.signMessage(ethers.getBytes(itxHash));
+
+  let signedUserOps: SignedUserOp[] = await Promise.all(
+    userOps.map(async (it) => {
+      return {
+        ...it,
+        signature: await encodeSig({
+          itxHash: itxHash,
+          proof: merkleTree.getProof(
+            klasterUserOpToMerkleLeaf({
+              userOp: it,
+              lowerBoundTimestamp: lowerBoundTimestamp,
+              upperBoundTimestamp: upperBoundTimestamp,
+              chainId,
+            }),
+          ),
+          lowerBoundTimestamp: lowerBoundTimestamp,
+          upperBoundTimestamp: upperBoundTimestamp,
+          signature: itxHashSigned,
+        }),
+      };
+    }),
+  );
+
+  return signedUserOps;
 }
 
 export async function fillAndSign(

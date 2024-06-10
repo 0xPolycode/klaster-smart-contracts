@@ -5,6 +5,7 @@ import {
   decodePaymasterData,
   decodeSig,
   fillAndSign,
+  fillAndSignMany,
   parseValidationData,
   updatePaymasterData,
   updateSignature,
@@ -17,6 +18,7 @@ import {
   getSmartAccountImplementation,
   getKlasterPaymaster,
   getKlasterAccount,
+  computeWalletAddress,
 } from "./utils/setupHelper";
 import { HashZero, ONE_ETH } from "./utils/constants";
 import { AddressZero } from "@ethersproject/constants";
@@ -44,7 +46,7 @@ describe("KlasterEcdsaModule: ", async () => {
   async function setupTests() {
     await deployments.fixture();
 
-    const [deployer, smartAccountOwner] = await hre.ethers.getSigners();
+    const [deployer] = await hre.ethers.getSigners();
 
     const entryPoint = await getEntryPoint();
     const scaImpl = await getSmartAccountImplementation();
@@ -87,13 +89,12 @@ describe("KlasterEcdsaModule: ", async () => {
 
       const {
         entryPoint,
-        scaImpl,
         scaFactory,
         klasterModule,
         klasterPaymaster,
         randomContract,
       } = await setupTests();
-      const { deployer, smartAccountOwner } = await getSigners();
+      const { smartAccountOwner } = await getSigners();
 
       const klasterModuleSetupData = klasterModule.interface.encodeFunctionData(
         "initForSmartAccount",
@@ -146,10 +147,7 @@ describe("KlasterEcdsaModule: ", async () => {
 
       // first create smart account manually
       const smartAccountIndex = 0;
-      const result = await getKlasterAccount(
-        smartAccountOwner.address,
-        smartAccountIndex,
-      );
+      await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
       // then try to recreate smart account (should fail)
       const userOp = await fillAndSign(
@@ -181,8 +179,7 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Call transferOwnership() and it successfully changes owner", async () => {
       const smartAccountIndex = 0;
       const { smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, entryPoint, klasterPaymaster } =
-        await setupTests();
+      const { klasterModule, klasterPaymaster } = await setupTests();
 
       // create account
       const klasterAccount = await getKlasterAccount(
@@ -264,7 +261,7 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Reverts when trying to set address(0) as owner", async () => {
       const smartAccountIndex = 0;
       const { smartAccountOwner } = await getSigners();
-      const { klasterModule, entryPoint, randomContract, klasterPaymaster } =
+      const { klasterModule, entryPoint, klasterPaymaster } =
         await setupTests();
 
       // create account
@@ -351,8 +348,7 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Returns SIG_VALIDATION_SUCCESS for a valid UserOp and valid itxHash", async () => {
       const smartAccountIndex = 0;
       const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { klasterModule, klasterPaymaster } = await setupTests();
 
       // create user account
       const smartAccount = await getKlasterAccount(
@@ -416,9 +412,8 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Returns SIG_VALIDATION_FAILED when invalid itxHash is passed in userOp signature", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
@@ -458,9 +453,8 @@ describe("KlasterEcdsaModule: ", async () => {
     // Pass in valid userOp with invalid chain Id
     it("Returns SIG_VALIDATION_FAILED when invalid chainId is passed in userOpHash", async () => {
       const smartAccountIndex = 0;
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
@@ -496,9 +490,8 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Returns SIG_VALIDATION_FAILED when userOp is signed by an invalid owner", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner, bob } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
@@ -539,9 +532,8 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Returns SIG_VALIDATION_FAILED when invalid merkle proof is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
@@ -581,9 +573,8 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Returns SIG_VALIDATION_FAILED when invalid lower bound timestamp is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
@@ -623,9 +614,8 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Returns SIG_VALIDATION_FAILED when invalid upper bound timestamp is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
@@ -665,9 +655,8 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Returns SIG_VALIDATION_FAILED when invalid paymaster maxGasLimit is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
@@ -708,9 +697,8 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Returns SIG_VALIDATION_FAILED when invalid paymaster nodePremium is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
@@ -751,7 +739,7 @@ describe("KlasterEcdsaModule: ", async () => {
     it("reverts when userOp.sender is an Unregistered Smart Account", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
+      const { smartAccountOwner } = await getSigners();
       const { klasterModule, klasterPaymaster, entryPoint } =
         await setupTests();
 
@@ -818,7 +806,7 @@ describe("KlasterEcdsaModule: ", async () => {
     it("Reverts when length of user.signature is less than 65 ", async () => {
       const smartAccountIndex = 0;
       const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
+      const { smartAccountOwner } = await getSigners();
       const { klasterModule, klasterPaymaster, entryPoint } =
         await setupTests();
 
@@ -857,10 +845,8 @@ describe("KlasterEcdsaModule: ", async () => {
   describe("isValidSignatureForAddress() & isValidSignature(): ", async () => {
     it("Returns EIP1271_MAGIC_VALUE for valid signature signed by Smart Account Owner", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       const smartAccount = await getKlasterAccount(
         smartAccountOwner.address,
@@ -896,16 +882,8 @@ describe("KlasterEcdsaModule: ", async () => {
     });
 
     it("Reverts when Unregistered Smart Account calls isValidSignature()", async () => {
-      const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const {
-        klasterModule,
-        klasterPaymaster,
-        entryPoint,
-        randomContract,
-        scaFactory,
-      } = await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule, randomContract } = await setupTests();
 
       const messageToSign = "SCW signed this message";
       const dataHash = hashMessage(messageToSign);
@@ -943,15 +921,8 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Reverts when signature length is less than 65", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const {
-        klasterModule,
-        klasterPaymaster,
-        entryPoint,
-        randomContract,
-        scaFactory,
-      } = await setupTests();
+      const { smartAccountOwner, bob } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       const smartAccount = await getKlasterAccount(
         smartAccountOwner.address,
@@ -985,10 +956,8 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Returns 0xffffffff for signatures not signed by Smart Account Owners ", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
-      const { deployer, smartAccountOwner, bob } = await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint } =
-        await setupTests();
+      const { smartAccountOwner } = await getSigners();
+      const { klasterModule } = await setupTests();
 
       const smartAccount = await getKlasterAccount(
         smartAccountOwner.address,
@@ -996,7 +965,6 @@ describe("KlasterEcdsaModule: ", async () => {
       );
 
       const messageToSign = "SCW signed this message";
-      const dataHash = hashMessage(messageToSign);
       const signature = await smartAccountOwner.signMessage(messageToSign);
 
       /**
@@ -1022,6 +990,62 @@ describe("KlasterEcdsaModule: ", async () => {
           await smartAccount.getAddress(),
         ),
       ).to.equal(EIP1271_INVALID_SIGNATURE);
+    });
+  });
+
+  describe("complex userOp tree", async () => {
+    it(`will successfully execute an iTx bundle of three userOps:
+          - userOp1: transfer 1 ETH to alice (+ lazy init smart account wallet)
+          - userOp2: transfer 1 ETH to charlie
+          - userOp3: transfer 1 ETH to bob
+    `, async () => {
+      const smartAccountIndex = 0;
+      const chainId = await hre.getChainId();
+      const { deployer, smartAccountOwner, alice, bob, charlie } =
+        await getSigners();
+      const { klasterModule, klasterPaymaster, entryPoint, scaFactory } =
+        await setupTests();
+
+      // precompute user account address
+      const smartAccount = await computeWalletAddress(
+        smartAccountOwner.address,
+        smartAccountIndex,
+      );
+
+      // fund user account with 3 ETH
+      await deployer.sendTransaction({
+        to: smartAccount,
+        value: 3n * ONE_ETH,
+      });
+      expect(await deployer.provider.getBalance(smartAccount)).to.be.equal(
+        3n * ONE_ETH,
+      );
+
+      // generate three user ops, 1 eth -> alice , 1 eth -> charlie, 1 eth -> bob
+      const userOps = await fillAndSignMany(
+        smartAccountOwner.address,
+        smartAccountIndex,
+        [alice.address, charlie.address, bob.address],
+        [ONE_ETH, ONE_ETH, ONE_ETH],
+        ["0x", "0x", "0x"],
+        [true, false, false], // lazy create smart contract account as a part of first userOp
+        getUnixTimestamp(-10),
+        getUnixTimestamp(500),
+        smartAccountOwner,
+        chainId,
+        [0, 1, 2], // different nonce keys to make userOps independent (can be executed in parallel) (see 2D nonces)
+      );
+
+      // execute userOps
+      const tx = await klasterPaymaster.handleOps(userOps, {
+        value: ONE_ETH,
+      });
+
+      // check the balance changes
+      await expect(tx).to.changeEtherBalance(smartAccount, -3n * ONE_ETH);
+      await expect(tx).to.changeEtherBalance(alice.address, ONE_ETH);
+      await expect(tx).to.changeEtherBalance(bob.address, ONE_ETH);
+      await expect(tx).to.changeEtherBalance(charlie.address, ONE_ETH);
     });
   });
 });
