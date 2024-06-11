@@ -10,13 +10,14 @@ import {
   PaymasterAndData,
   SignedUserOp,
   UserOp,
+  UserOpSignature,
   ValidationData,
+  address,
+  bytes,
+  uint192,
+  uint256,
 } from "../types";
-import {
-  getKlasterUserOpHash,
-  getMerkleTree,
-  klasterUserOpToMerkleLeaf,
-} from "./merkleTree";
+import { getMerkleTree, klasterUserOpToMerkleLeaf } from "./merkleTree";
 
 export function parseValidationData(
   validateUserOpResult: bigint,
@@ -28,9 +29,7 @@ export function parseValidationData(
   const validUntil = ethers.toNumber(
     ethers.dataSlice(validateUserOpResultPadded, 6, 12),
   );
-  const status = ethers.toNumber(
-    ethers.dataSlice(validateUserOpResultPadded, 12),
-  );
+  const status = Number(ethers.dataSlice(validateUserOpResultPadded, 12));
   return {
     validAfter,
     validUntil,
@@ -39,15 +38,15 @@ export function parseValidationData(
 }
 
 export async function fillUserOp(
-  masterWallet: string,
-  salt: number,
-  to: string,
-  value: bigint,
-  data: string,
+  masterWallet: address,
+  salt: uint256,
+  to: address,
+  value: uint256,
+  data: bytes,
   createSender: boolean,
   userOpOverrides: Partial<UserOp>,
   signer: ethers.Signer,
-  nonceKey = 0,
+  nonceKey: uint192 = 0,
 ): Promise<SignedUserOp> {
   const scaImpl = await getSmartAccountImplementation();
   const scaFactory = await getSmartAccountFactory();
@@ -77,16 +76,8 @@ export async function fillUserOp(
     : "0x";
 
   const preVerificationGas = "50000";
-  const createSenderCost =
-    initCode == "0x"
-      ? 0
-      : await estimateCreateSenderCost(
-          await entryPoint.getAddress(),
-          ethers.dataSlice(initCode, 0, 20),
-          ethers.dataSlice(initCode, 20),
-          signer.provider!,
-        );
-  const verificationGasLimit = (createSenderCost + 250000).toString();
+  const createSenderCost = createSender ? 250000 : 0;
+  const verificationGasLimit = (createSenderCost + 100000).toString();
   const callGasLimit = "50000";
 
   const feeData = await signer.provider!.getFeeData();
@@ -212,16 +203,16 @@ export async function fillAndSignMany(
 }
 
 export async function fillAndSign(
-  masterWallet: string,
-  salt: number,
-  to: string,
-  value: bigint,
-  data: string,
+  masterWallet: address,
+  salt: uint256,
+  to: address,
+  value: uint256,
+  data: bytes,
   createSender: boolean,
-  lowerBoundTimestamp: string,
-  upperBoundTimestamp: string,
+  lowerBoundTimestamp: uint256,
+  upperBoundTimestamp: uint256,
   signer: ethers.Signer,
-  chainId: string,
+  chainId: uint256,
   userOpOverrides: Partial<UserOp> = {},
 ): Promise<SignedUserOp> {
   const op = await fillUserOp(
@@ -308,14 +299,6 @@ async function encodePaymasterData(
   );
   return ethers.concat([paymasterData.paymaster, encodedData]);
 }
-
-type UserOpSignature = {
-  itxHash: string;
-  proof: string[];
-  lowerBoundTimestamp: string;
-  upperBoundTimestamp: string;
-  signature: string;
-};
 
 export async function updateSignature(
   userOp: SignedUserOp,

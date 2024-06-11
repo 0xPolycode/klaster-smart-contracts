@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import hre, { deployments, ethers } from "hardhat";
+import hre, { deployments, ethers, getChainId } from "hardhat";
 import { hashMessage } from "ethers";
 import {
   decodePaymasterData,
@@ -26,10 +26,14 @@ import { getUnixTimestamp } from "./utils/timeUtils";
 
 describe("KlasterEcdsaModule: ", async () => {
   const smartAccountDeploymentIndex = 0;
-  const SIG_VALIDATION_SUCCESS = 0;
-  const SIG_VALIDATION_FAILED = 1;
+  const SIG_VALIDATION_SUCCESS = 0; // sigFailed = false (erc4337 validation data)
+  const SIG_VALIDATION_FAILED = 1; // sigFailed = true (erc4337 validation data)
   const EIP1271_INVALID_SIGNATURE = "0xffffffff";
   const EIP1271_MAGIC_VALUE = "0x1626ba7e";
+  const NOW = getUnixTimestamp(0);
+  const FAR_FUTURE = getUnixTimestamp(1000);
+  const ZERO_VALUE = 0n;
+  const EMPTY_CALLDATA = "0x";
 
   async function getSigners() {
     const [deployer, smartAccountOwner, alice, bob, charlie] =
@@ -95,6 +99,7 @@ describe("KlasterEcdsaModule: ", async () => {
         randomContract,
       } = await setupTests();
       const { smartAccountOwner } = await getSigners();
+      const chainId = await getChainId();
 
       const klasterModuleSetupData = klasterModule.interface.encodeFunctionData(
         "initForSmartAccount",
@@ -112,13 +117,13 @@ describe("KlasterEcdsaModule: ", async () => {
         await randomContract.getAddress(),
         smartAccountDeploymentIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         true,
-        getUnixTimestamp(-10),
-        getUnixTimestamp(+500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
-        await hre.getChainId(),
+        chainId,
         {
           verificationGasLimit: "1000000",
         },
@@ -144,6 +149,7 @@ describe("KlasterEcdsaModule: ", async () => {
       const { klasterModule, klasterPaymaster, entryPoint } =
         await setupTests();
       const { smartAccountOwner, bob } = await getSigners();
+      const chainId = await getChainId();
 
       // first create smart account manually
       const smartAccountIndex = 0;
@@ -154,18 +160,15 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountOwner.address,
         smartAccountIndex,
         await klasterModule.getAddress(),
-        0n,
+        ZERO_VALUE,
         klasterModule.interface.encodeFunctionData("initForSmartAccount", [
           bob.address,
         ]),
         false,
-        getUnixTimestamp(-10),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
-        await hre.getChainId(),
-        {
-          verificationGasLimit: "500000",
-        },
+        chainId,
       );
 
       const tx = await klasterPaymaster.handleOps([userOp], {
@@ -180,6 +183,7 @@ describe("KlasterEcdsaModule: ", async () => {
       const smartAccountIndex = 0;
       const { smartAccountOwner, bob } = await getSigners();
       const { klasterModule, klasterPaymaster } = await setupTests();
+      const chainId = await getChainId();
 
       // create account
       const klasterAccount = await getKlasterAccount(
@@ -194,18 +198,15 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountOwner.address,
         smartAccountIndex,
         await klasterModule.getAddress(),
-        0n,
+        ZERO_VALUE,
         klasterModule.interface.encodeFunctionData("transferOwnership", [
           bob.address,
         ]),
         false,
-        getUnixTimestamp(0),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
-        await hre.getChainId(),
-        {
-          verificationGasLimit: "500000",
-        },
+        chainId,
       );
 
       await klasterPaymaster.handleOps([userOp], {
@@ -221,11 +222,12 @@ describe("KlasterEcdsaModule: ", async () => {
       const { smartAccountOwner } = await getSigners();
       const { klasterModule, entryPoint, randomContract, klasterPaymaster } =
         await setupTests();
+      const chainId = await getChainId();
 
       // create account
       const klasterAccount = await getKlasterAccount(
         smartAccountOwner.address,
-        0,
+        smartAccountIndex,
       );
       const previousOwner = await klasterModule.getOwner(klasterAccount);
       expect(previousOwner).to.be.equal(smartAccountOwner.address);
@@ -235,18 +237,15 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountOwner.address,
         smartAccountIndex,
         await klasterModule.getAddress(),
-        0n,
+        ZERO_VALUE,
         klasterModule.interface.encodeFunctionData("transferOwnership", [
           randomContract.target,
         ]),
         false,
-        getUnixTimestamp(0),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
-        await hre.getChainId(),
-        {
-          verificationGasLimit: "500000",
-        },
+        chainId,
       );
 
       const tx = await klasterPaymaster.handleOps([userOp], {
@@ -263,11 +262,12 @@ describe("KlasterEcdsaModule: ", async () => {
       const { smartAccountOwner } = await getSigners();
       const { klasterModule, entryPoint, klasterPaymaster } =
         await setupTests();
+      const chainId = await getChainId();
 
       // create account
       const klasterAccount = await getKlasterAccount(
         smartAccountOwner.address,
-        0,
+        smartAccountIndex,
       );
       const previousOwner = await klasterModule.getOwner(klasterAccount);
       expect(previousOwner).to.be.equal(smartAccountOwner.address);
@@ -277,18 +277,15 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountOwner.address,
         smartAccountIndex,
         await klasterModule.getAddress(),
-        0n,
+        ZERO_VALUE,
         klasterModule.interface.encodeFunctionData("transferOwnership", [
           AddressZero,
         ]),
         false,
-        getUnixTimestamp(0),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
-        await hre.getChainId(),
-        {
-          verificationGasLimit: "500000",
-        },
+        chainId,
       );
 
       const tx = await klasterPaymaster.handleOps([userOp], {
@@ -306,11 +303,12 @@ describe("KlasterEcdsaModule: ", async () => {
       const smartAccountIndex = 0;
       const { smartAccountOwner } = await getSigners();
       const { klasterModule, klasterPaymaster } = await setupTests();
+      const chainId = await getChainId();
 
       // create account
       const klasterAccount = await getKlasterAccount(
         smartAccountOwner.address,
-        0,
+        smartAccountIndex,
       );
       const previousOwner = await klasterModule.getOwner(klasterAccount);
       expect(previousOwner).to.be.equal(smartAccountOwner.address);
@@ -320,16 +318,13 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountOwner.address,
         smartAccountIndex,
         await klasterModule.getAddress(),
-        0n,
+        ZERO_VALUE,
         klasterModule.interface.encodeFunctionData("renounceOwnership"),
         false,
-        getUnixTimestamp(0),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
-        await hre.getChainId(),
-        {
-          verificationGasLimit: "500000",
-        },
+        chainId,
       );
 
       await klasterPaymaster.handleOps([userOp], {
@@ -349,6 +344,7 @@ describe("KlasterEcdsaModule: ", async () => {
       const smartAccountIndex = 0;
       const { deployer, smartAccountOwner, bob } = await getSigners();
       const { klasterModule, klasterPaymaster } = await setupTests();
+      const chainId = await getChainId();
 
       // create user account
       const smartAccount = await getKlasterAccount(
@@ -366,22 +362,17 @@ describe("KlasterEcdsaModule: ", async () => {
       ).to.be.equal(ONE_ETH);
 
       // generate userOp that moves 1 ETH from user account to bob
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
       const userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         bob.address,
         ONE_ETH,
-        "0x",
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
-        await hre.getChainId(),
-        {
-          verificationGasLimit: "500000",
-        },
+        chainId,
       );
 
       // validate user op
@@ -391,12 +382,8 @@ describe("KlasterEcdsaModule: ", async () => {
       );
       const validationData = parseValidationData(validateUserOpResult);
       expect(validationData.status).to.be.equal(SIG_VALIDATION_SUCCESS);
-      expect(validationData.validAfter.toString()).to.be.equal(
-        lowerBoundTimestamp,
-      );
-      expect(validationData.validUntil.toString()).to.be.equal(
-        upperBoundTimestamp,
-      );
+      expect(validationData.validAfter.toString()).to.be.equal(NOW);
+      expect(validationData.validUntil.toString()).to.be.equal(FAR_FUTURE);
 
       // execute userOp
       const tx = await klasterPaymaster.handleOps([userOp], {
@@ -411,7 +398,7 @@ describe("KlasterEcdsaModule: ", async () => {
     // Pass in valid userOp with invalid userOpHash
     it("Returns SIG_VALIDATION_FAILED when invalid itxHash is passed in userOp signature", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner } = await getSigners();
       const { klasterModule } = await setupTests();
 
@@ -419,22 +406,17 @@ describe("KlasterEcdsaModule: ", async () => {
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
       // generate userOp
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
       let userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
-        {
-          verificationGasLimit: "500000",
-        },
       );
 
       userOp = await updateSignature(userOp, {
@@ -460,22 +442,17 @@ describe("KlasterEcdsaModule: ", async () => {
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
       // generate userOp with wrong chainId
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
       const userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         "666", // pass the wrong chain id!
-        {
-          verificationGasLimit: "500000",
-        },
       );
 
       // validate user op
@@ -489,30 +466,25 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Returns SIG_VALIDATION_FAILED when userOp is signed by an invalid owner", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner, bob } = await getSigners();
       const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
-      // generate userOp with wrong chainId
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
+      // generate userOp
       let userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
-        {
-          verificationGasLimit: "500000",
-        },
       );
 
       const decodedSig = await decodeSig(userOp);
@@ -531,30 +503,25 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Returns SIG_VALIDATION_FAILED when invalid merkle proof is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner } = await getSigners();
       const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
-      // generate userOp with wrong chainId
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
+      // generate userOp
       let userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
-        {
-          verificationGasLimit: "500000",
-        },
       );
 
       userOp = await updateSignature(userOp, {
@@ -572,30 +539,25 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Returns SIG_VALIDATION_FAILED when invalid lower bound timestamp is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner } = await getSigners();
       const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
-      // generate userOp with wrong chainId
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
+      // generate userOp
       let userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
-        {
-          verificationGasLimit: "500000",
-        },
       );
 
       userOp = await updateSignature(userOp, {
@@ -613,30 +575,25 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Returns SIG_VALIDATION_FAILED when invalid upper bound timestamp is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner } = await getSigners();
       const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
-      // generate userOp with wrong chainId
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
+      // generate userOp
       let userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
-        {
-          verificationGasLimit: "500000",
-        },
       );
 
       userOp = await updateSignature(userOp, {
@@ -654,30 +611,25 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Returns SIG_VALIDATION_FAILED when invalid paymaster maxGasLimit is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner } = await getSigners();
       const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
-      // generate userOp with wrong chainId
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
+      // generate userOp
       let userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
-        {
-          verificationGasLimit: "500000",
-        },
       );
 
       const paymasterData = await decodePaymasterData(userOp);
@@ -696,30 +648,25 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Returns SIG_VALIDATION_FAILED when invalid paymaster nodePremium is submitted in the userOp signature", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner } = await getSigners();
       const { klasterModule } = await setupTests();
 
       // create user account
       await getKlasterAccount(smartAccountOwner.address, smartAccountIndex);
 
-      // generate userOp with wrong chainId
-      const lowerBoundTimestamp = getUnixTimestamp(0);
-      const upperBoundTimestamp = getUnixTimestamp(500);
+      // generate userOp
       let userOp = await fillAndSign(
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        lowerBoundTimestamp,
-        upperBoundTimestamp,
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
-        {
-          verificationGasLimit: "500000",
-        },
       );
 
       const paymasterData = await decodePaymasterData(userOp);
@@ -738,7 +685,7 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("reverts when userOp.sender is an Unregistered Smart Account", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner } = await getSigners();
       const { klasterModule, klasterPaymaster, entryPoint } =
         await setupTests();
@@ -757,11 +704,11 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountOwner.address,
         smartAccountIndex,
         await klasterModule.getAddress(),
-        0n,
+        ZERO_VALUE,
         klasterModule.interface.encodeFunctionData("renounceOwnership"),
         false,
-        getUnixTimestamp(0),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
       );
@@ -780,11 +727,11 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         false,
-        getUnixTimestamp(0),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
       );
@@ -805,7 +752,7 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Reverts when length of user.signature is less than 65 ", async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { smartAccountOwner } = await getSigners();
       const { klasterModule, klasterPaymaster, entryPoint } =
         await setupTests();
@@ -816,11 +763,11 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountOwner.address,
         smartAccountIndex,
         AddressZero,
-        0n,
-        "0x",
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
         true,
-        getUnixTimestamp(0),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
       );
@@ -921,7 +868,7 @@ describe("KlasterEcdsaModule: ", async () => {
 
     it("Reverts when signature length is less than 65", async () => {
       const smartAccountIndex = 0;
-      const { smartAccountOwner, bob } = await getSigners();
+      const { smartAccountOwner } = await getSigners();
       const { klasterModule } = await setupTests();
 
       const smartAccount = await getKlasterAccount(
@@ -1000,11 +947,10 @@ describe("KlasterEcdsaModule: ", async () => {
           - userOp3: transfer 1 ETH to bob
     `, async () => {
       const smartAccountIndex = 0;
-      const chainId = await hre.getChainId();
+      const chainId = await getChainId();
       const { deployer, smartAccountOwner, alice, bob, charlie } =
         await getSigners();
-      const { klasterModule, klasterPaymaster, entryPoint, scaFactory } =
-        await setupTests();
+      const { klasterPaymaster } = await setupTests();
 
       // precompute user account address
       const smartAccount = await computeWalletAddress(
@@ -1027,16 +973,16 @@ describe("KlasterEcdsaModule: ", async () => {
         smartAccountIndex,
         [alice.address, charlie.address, bob.address],
         [ONE_ETH, ONE_ETH, ONE_ETH],
-        ["0x", "0x", "0x"],
+        [EMPTY_CALLDATA, EMPTY_CALLDATA, EMPTY_CALLDATA],
         [true, false, false], // lazy create smart contract account as a part of first userOp
-        getUnixTimestamp(-10),
-        getUnixTimestamp(500),
+        NOW,
+        FAR_FUTURE,
         smartAccountOwner,
         chainId,
         [0, 1, 2], // different nonce keys to make userOps independent (can be executed in parallel) (see 2D nonces)
       );
 
-      // execute userOps
+      // batch execute userOps
       const tx = await klasterPaymaster.handleOps(userOps, {
         value: ONE_ETH,
       });
