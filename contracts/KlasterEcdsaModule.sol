@@ -83,7 +83,7 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
 
     /**
      * Calculates userOp hash. Almost works like a regular 4337 userOp hash with few fields added.
-     * 
+     *
      * @param userOp userOp to calculate the hash for
      * @param lowerBoundTimestamp lower bound timestamp set when constructing userOp
      * @param upperBoundTimestamp upper bound timestamp set when constructing userOp
@@ -102,7 +102,7 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
      * @dev validates userOperation
      * @param userOp User Operation to be validated.
      * @param userOpHash Not used. Here for interface compatibility. iTxHash (merkle root) is used and encoded in userOp.signature
-     * @return sigValidationResult ValidationData - success if: 
+     * @return sigValidationResult ValidationData - success if:
      *                                  1. the given userOp belongs to the merkle tree with given iTxHash
      *                                  2. the given iTxHash has been signed by the owner of this smart account
      */
