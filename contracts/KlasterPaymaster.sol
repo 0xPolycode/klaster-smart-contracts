@@ -5,6 +5,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import "@account-abstraction/contracts/core/BasePaymaster.sol";
 import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import "@account-abstraction/contracts/core/Helpers.sol";
+import "hardhat/console.sol";
 
 contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
     constructor(IEntryPoint _entryPoint) payable BasePaymaster(_entryPoint) {}
@@ -56,16 +57,23 @@ contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
         (address sender, uint256 maxFeePerGas, uint256 maxGasLimit, uint256 nodeOperatorPremium) =
             abi.decode(context, (address, uint256, uint256, uint256));
 
-        uint256 costWithPremium = (actualGasCost * (100 + nodeOperatorPremium)) / 100;
-        uint256 maxCost = maxGasLimit * maxFeePerGas;
-        uint256 totalUserCost = min(costWithPremium, maxCost);
-
-        if (totalUserCost < maxCost) {
-            entryPoint.withdrawTo(payable(sender), maxCost - totalUserCost);
+        uint256 refund = calculateRefund(maxGasLimit, maxFeePerGas, actualGasCost, nodeOperatorPremium);
+        if (refund > 0) {
+            entryPoint.withdrawTo(payable(sender), refund);
         }
     }
 
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
+    function calculateRefund(
+        uint256 maxGasLimit,
+        uint256 maxFeePerGas,
+        uint256 actualGasCost,
+        uint256 nodeOperatorPremium
+    ) public pure returns (uint256 refund) {
+        uint256 costWithPremium = (actualGasCost * (100 + nodeOperatorPremium)) / 100;
+
+        uint256 maxCost = maxGasLimit * maxFeePerGas;
+        if (costWithPremium < maxCost) {
+            refund = maxCost - costWithPremium;
+        }
     }
 }

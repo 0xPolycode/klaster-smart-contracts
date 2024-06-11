@@ -51,6 +51,35 @@ export type SignedUserOp = UserOp & {
   signature: bytes;
 };
 
+type ReturnInfo = {
+  preOpGas: uint256;
+  prefund: uint256;
+  sigFailed: uint256;
+  validAfter: uint48;
+  validUntil: uint48;
+  paymasterContext: bytes;
+};
+type StakeInfo = {
+  stake: uint256;
+  unstakeDelaySec: uint256;
+};
+
+export type SimulateValidationResult = {
+  returnInfo: ReturnInfo;
+  senderInfo: StakeInfo;
+  factoryInfo: StakeInfo;
+  paymasterInfo: StakeInfo;
+};
+
+export type ExecutionResult = {
+  preOpGas: uint256;
+  paid: uint256;
+  validAfter: uint48;
+  validUntil: uint48;
+  targetSuccess: boolean;
+  targetResult: bytes;
+};
+
 /**
  * Solidity Types
  */

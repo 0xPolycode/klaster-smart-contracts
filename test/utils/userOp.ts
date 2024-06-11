@@ -18,6 +18,7 @@ import {
   uint256,
 } from "../types";
 import { getMerkleTree, klasterUserOpToMerkleLeaf } from "./merkleTree";
+import { MAX_GAS_LIMIT } from "./constants";
 
 export function parseValidationData(
   validateUserOpResult: bigint,
@@ -47,6 +48,7 @@ export async function fillUserOp(
   userOpOverrides: Partial<UserOp>,
   signer: ethers.Signer,
   nonceKey: uint192 = 0,
+  maxGasLimit: uint256 = MAX_GAS_LIMIT,
 ): Promise<SignedUserOp> {
   const scaImpl = await getSmartAccountImplementation();
   const scaFactory = await getSmartAccountFactory();
@@ -91,15 +93,16 @@ export async function fillUserOp(
     data,
   ]);
 
-  let maxGasLimit = (
-    Number(preVerificationGas) + Number(callGasLimit)
+  let calculatedMaxGasLimit = Math.min(
+    Number(verificationGasLimit) + Number(callGasLimit),
+    Number(maxGasLimit),
   ).toString();
   let nodeFee = 10;
   let paymasterAndData = concat([
     await klasterPaymaster.getAddress(),
     ethers.AbiCoder.defaultAbiCoder().encode(
       ["uint256", "uint256"],
-      [maxGasLimit, nodeFee],
+      [calculatedMaxGasLimit, nodeFee],
     ),
   ]);
 
@@ -213,6 +216,7 @@ export async function fillAndSign(
   upperBoundTimestamp: uint256,
   signer: ethers.Signer,
   chainId: uint256,
+  maxGasLimit: uint256 = MAX_GAS_LIMIT,
   userOpOverrides: Partial<UserOp> = {},
 ): Promise<SignedUserOp> {
   const op = await fillUserOp(
@@ -224,6 +228,8 @@ export async function fillAndSign(
     createSender,
     userOpOverrides,
     signer,
+    0,
+    maxGasLimit,
   );
 
   const merkleTree = getMerkleTree([

@@ -1,4 +1,4 @@
-import hre, { deployments } from "hardhat";
+import hre, { deployments, ethers } from "hardhat";
 import { Wallet, Contract, Signer } from "ethers";
 import {
   EntryPoint,
@@ -77,6 +77,7 @@ export const getKlasterAccount = async (owner: string, index: number = 0) => {
 
 export const compile = async (
   source: string,
+  contractName: string,
   settingsOverrides?: { evmVersion?: string },
 ) => {
   const input = JSON.stringify({
@@ -102,7 +103,7 @@ export const compile = async (
     throw Error("Could not compile contract");
   }
   const fileOutput = output.contracts["tmp.sol"];
-  const contractOutput = fileOutput[Object.keys(fileOutput)[0]];
+  const contractOutput = fileOutput[contractName];
   const abi = contractOutput.abi;
   const data = "0x" + contractOutput.evm.bytecode.object;
   return {
@@ -113,12 +114,14 @@ export const compile = async (
 
 export const deployContract = async (
   deployer: Wallet | Signer,
+  contractName: string,
   source: string,
+  params: string = "0x",
   settingsOverrides?: { evmVersion?: string },
 ): Promise<Contract> => {
-  const output = await compile(source, settingsOverrides);
+  const output = await compile(source, contractName, settingsOverrides);
   const transaction = await deployer.sendTransaction({
-    data: output.data,
+    data: ethers.concat([output.data, params]),
     gasLimit: 6000000,
   });
   const receipt = await transaction.wait();

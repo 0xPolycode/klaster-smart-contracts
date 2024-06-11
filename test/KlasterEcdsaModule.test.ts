@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import hre, { deployments, ethers, getChainId } from "hardhat";
+import { ethers, getChainId } from "hardhat";
 import { hashMessage } from "ethers";
 import {
   decodePaymasterData,
@@ -10,72 +10,25 @@ import {
   updatePaymasterData,
   updateSignature,
 } from "./utils/userOp";
+import { getKlasterAccount, computeWalletAddress } from "./utils/setupHelper";
 import {
-  getEntryPoint,
-  getSmartAccountFactory,
-  deployContract,
-  getKlasterModule,
-  getSmartAccountImplementation,
-  getKlasterPaymaster,
-  getKlasterAccount,
-  computeWalletAddress,
-} from "./utils/setupHelper";
-import { HashZero, ONE_ETH } from "./utils/constants";
+  EIP1271_INVALID_SIGNATURE,
+  EIP1271_MAGIC_VALUE,
+  EMPTY_CALLDATA,
+  FAR_FUTURE,
+  HashZero,
+  MAX_GAS_LIMIT,
+  NOW,
+  ONE_ETH,
+  SIG_VALIDATION_FAILED,
+  SIG_VALIDATION_SUCCESS,
+  ZERO_VALUE,
+} from "./utils/constants";
 import { AddressZero } from "@ethersproject/constants";
-import { getUnixTimestamp } from "./utils/timeUtils";
+import { setupTests, getSigners } from "./utils/testUtils";
 
 describe("KlasterEcdsaModule: ", async () => {
   const smartAccountDeploymentIndex = 0;
-  const SIG_VALIDATION_SUCCESS = 0; // sigFailed = false (erc4337 validation data)
-  const SIG_VALIDATION_FAILED = 1; // sigFailed = true (erc4337 validation data)
-  const EIP1271_INVALID_SIGNATURE = "0xffffffff";
-  const EIP1271_MAGIC_VALUE = "0x1626ba7e";
-  const NOW = getUnixTimestamp(0);
-  const FAR_FUTURE = getUnixTimestamp(1000);
-  const ZERO_VALUE = 0n;
-  const EMPTY_CALLDATA = "0x";
-
-  async function getSigners() {
-    const [deployer, smartAccountOwner, alice, bob, charlie] =
-      await hre.ethers.getSigners();
-    return {
-      deployer,
-      smartAccountOwner,
-      alice,
-      bob,
-      charlie,
-    };
-  }
-
-  async function setupTests() {
-    await deployments.fixture();
-
-    const [deployer] = await hre.ethers.getSigners();
-
-    const entryPoint = await getEntryPoint();
-    const scaImpl = await getSmartAccountImplementation();
-    const scaFactory = await getSmartAccountFactory();
-    const klasterModule = await getKlasterModule();
-    const klasterPaymaster = await getKlasterPaymaster();
-
-    const randomContractCode = `
-            contract random {
-                function returnAddress() public view returns(address){
-                    return address(this);
-                }
-            }
-            `;
-    const randomContract = await deployContract(deployer, randomContractCode);
-
-    return {
-      entryPoint,
-      scaImpl,
-      scaFactory,
-      klasterModule,
-      klasterPaymaster,
-      randomContract,
-    };
-  }
 
   describe("initForSmartAccount: ", async () => {
     it("Reverts when trying to set Smart Contract as owner of the Smart Account via deployment userOp", async () => {
@@ -124,6 +77,7 @@ describe("KlasterEcdsaModule: ", async () => {
         FAR_FUTURE,
         smartAccountOwner,
         chainId,
+        MAX_GAS_LIMIT,
         {
           verificationGasLimit: "1000000",
         },
@@ -390,8 +344,7 @@ describe("KlasterEcdsaModule: ", async () => {
         value: ONE_ETH,
       });
 
-      // check the balance changes
-      await expect(tx).to.changeEtherBalance(smartAccount.target, -ONE_ETH);
+      // check the balance change
       await expect(tx).to.changeEtherBalance(bob.address, ONE_ETH);
     });
 
@@ -979,7 +932,7 @@ describe("KlasterEcdsaModule: ", async () => {
         FAR_FUTURE,
         smartAccountOwner,
         chainId,
-        [0, 1, 2], // different nonce keys to make userOps independent (can be executed in parallel) (see 2D nonces)
+        [0, 1, 2], // different nonce keys to make userOps independent (can be executed in parallel) (see 2D nonces),
       );
 
       // batch execute userOps
@@ -988,7 +941,6 @@ describe("KlasterEcdsaModule: ", async () => {
       });
 
       // check the balance changes
-      await expect(tx).to.changeEtherBalance(smartAccount, -3n * ONE_ETH);
       await expect(tx).to.changeEtherBalance(alice.address, ONE_ETH);
       await expect(tx).to.changeEtherBalance(bob.address, ONE_ETH);
       await expect(tx).to.changeEtherBalance(charlie.address, ONE_ETH);

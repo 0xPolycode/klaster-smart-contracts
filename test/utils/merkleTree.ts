@@ -18,9 +18,9 @@ export function klasterUserOpToMerkleLeaf(
 ): string[] {
   return [
     get4337UserOpHash(klasterUserOp.userOp),
-    klasterUserOp.lowerBoundTimestamp,
-    klasterUserOp.upperBoundTimestamp,
-    klasterUserOp.chainId,
+    klasterUserOp.lowerBoundTimestamp.toString(),
+    klasterUserOp.upperBoundTimestamp.toString(),
+    klasterUserOp.chainId.toString(),
   ];
 }
 
