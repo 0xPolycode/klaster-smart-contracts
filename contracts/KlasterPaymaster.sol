@@ -8,20 +8,31 @@ import "@account-abstraction/contracts/core/Helpers.sol";
 import "hardhat/console.sol";
 
 contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
+    error EmptyMessageValue();
+
     constructor(IEntryPoint _entryPoint) payable BasePaymaster(_entryPoint) {}
 
     function handleOps(UserOperation[] calldata ops) public payable {
+        if (msg.value == 0) {
+            revert EmptyMessageValue();
+        }
         entryPoint.depositTo{value: msg.value}(address(this));
         entryPoint.handleOps(ops, payable(msg.sender));
         entryPoint.withdrawTo(payable(msg.sender), entryPoint.getDepositInfo(address(this)).deposit);
     }
 
     function simulateHandleOp(UserOperation calldata op, address target, bytes calldata callData) external payable {
+        if (msg.value == 0) {
+            revert EmptyMessageValue();
+        }
         entryPoint.depositTo{value: msg.value}(address(this));
         entryPoint.simulateHandleOp(op, target, callData);
     }
 
     function simulateValidation(UserOperation calldata op) external payable {
+        if (msg.value == 0) {
+            revert EmptyMessageValue();
+        }
         entryPoint.depositTo{value: msg.value}(address(this));
         entryPoint.simulateValidation(op);
     }

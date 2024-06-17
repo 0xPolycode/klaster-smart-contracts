@@ -238,11 +238,13 @@ describe("KlasterPaymaster: ", async () => {
         lowMaxGasLimit,
       );
 
-      // node executes userOp with 1 ETH msg.value (used for refunds)
       const tx = klasterPaymaster.connect(klasterNode).handleOps([userOp], {
         value: 0, // eth sent is 0 -> can't process userOp
       });
-      await expect(tx).to.be.revertedWithCustomError(entryPoint, "FailedOp");
+      await expect(tx).to.be.revertedWithCustomError(
+        klasterPaymaster,
+        "EmptyMessageValue",
+      );
     });
 
     it("will fail if malicious node is trying to execute userOp via different paymaster then the one defined in userOp", async () => {
@@ -289,6 +291,35 @@ describe("KlasterPaymaster: ", async () => {
     });
   });
   describe("simulateHandleOp(): ", async () => {
+    it("will revert if 0 msg.value sent", async () => {
+      const smartAccountIndex = 0;
+      const { smartAccountOwner } = await getSigners();
+      const { klasterPaymaster } = await setupTests();
+      const chainId = await getChainId();
+
+      // generate userOp that runs empty op
+      const userOp = await fillAndSign(
+        smartAccountOwner.address,
+        smartAccountIndex,
+        AddressZero,
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
+        true,
+        NOW,
+        FAR_FUTURE,
+        smartAccountOwner,
+        chainId,
+      );
+      const faultyTx = klasterPaymaster.simulateHandleOp.staticCall(
+        userOp,
+        AddressZero,
+        EMPTY_CALLDATA,
+      );
+      await expect(faultyTx).to.be.revertedWithCustomError(
+        klasterPaymaster,
+        "EmptyMessageValue",
+      );
+    });
     it("can call simulateHandleOp()", async () => {
       const smartAccountIndex = 0;
       const { smartAccountOwner } = await getSigners();
@@ -339,6 +370,31 @@ describe("KlasterPaymaster: ", async () => {
   });
 
   describe("simulateValidation(): ", async () => {
+    it("wil revert if 0 msg.value sent", async () => {
+      const smartAccountIndex = 0;
+      const { smartAccountOwner } = await getSigners();
+      const { klasterPaymaster, entryPoint } = await setupTests();
+      const chainId = await getChainId();
+
+      // generate userOp that runs empty op
+      const userOp = await fillAndSign(
+        smartAccountOwner.address,
+        smartAccountIndex,
+        AddressZero,
+        ZERO_VALUE,
+        EMPTY_CALLDATA,
+        true,
+        NOW,
+        FAR_FUTURE,
+        smartAccountOwner,
+        chainId,
+      );
+      const faultyTx = klasterPaymaster.simulateValidation.staticCall(userOp);
+      await expect(faultyTx).to.be.revertedWithCustomError(
+        klasterPaymaster,
+        "EmptyMessageValue",
+      );
+    });
     it("can call simulateValidation()", async () => {
       const smartAccountIndex = 0;
       const { smartAccountOwner } = await getSigners();
