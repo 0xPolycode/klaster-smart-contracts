@@ -9,6 +9,7 @@ import "hardhat/console.sol";
 
 contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
     error EmptyMessageValue();
+    error InsufficientBalance();
 
     constructor(IEntryPoint _entryPoint) payable BasePaymaster(_entryPoint) {}
 
@@ -44,6 +45,9 @@ contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
         override
         returns (bytes memory context, uint256 validationData)
     {
+        if (entryPoint.getDepositInfo(address(this)).deposit < maxCost) {
+            revert InsufficientBalance();
+        }
         (uint256 maxGasLimit, uint256 nodeOperatorPremium) =
             abi.decode(userOp.paymasterAndData[20:], (uint256, uint256));
         return (abi.encode(userOp.sender, userOp.maxFeePerGas, maxGasLimit, nodeOperatorPremium), 0);
