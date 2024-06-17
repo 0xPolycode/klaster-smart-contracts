@@ -14,25 +14,28 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 800
-          }
-        }
-      }
+            runs: 800,
+          },
+        },
+      },
     ],
+    overrides: {
+      "contracts/deployer/DeterministicDeployFactory.sol": {
+        version: "0.8.19",
+      },
+    },
   },
   dependencyCompiler: {
-    paths: [
-      '@account-abstraction/contracts/core/EntryPoint.sol'
-    ],
+    paths: ["@account-abstraction/contracts/core/EntryPoint.sol"],
   },
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
-    }
+    },
   },
   namedAccounts: {
-		deployer: 0
-	}
+    deployer: 0,
+  },
 };
 
 export default config;
