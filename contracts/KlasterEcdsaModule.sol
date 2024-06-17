@@ -45,6 +45,7 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
             revert AlreadyInitedForSmartAccount(msg.sender);
         }
         if (eoaOwner == address(0)) revert ZeroAddressNotAllowedAsOwner();
+        if (_isSmartContract(eoaOwner)) revert NotEOA(eoaOwner);
         _smartAccountOwners[msg.sender] = eoaOwner;
         return address(this);
     }

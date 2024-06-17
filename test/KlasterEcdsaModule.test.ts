@@ -89,7 +89,7 @@ describe("KlasterEcdsaModule: ", async () => {
         }),
       )
         .to.be.revertedWithCustomError(entryPoint, "FailedOp")
-        .withArgs(0, "AA24 signature error");
+        .withArgs(0, "AA13 initCode failed or OOG"); // now fails with initCode failed since we added EOA check in the initSmartAccount()
 
       await expect(
         klasterModule.getOwner(expectedSmartAccountAddress),
@@ -129,6 +129,30 @@ describe("KlasterEcdsaModule: ", async () => {
         value: ONE_ETH,
       });
       await expect(tx).to.emit(entryPoint, "UserOperationRevertReason");
+    });
+
+    it("reverts when owner is a smart contract", async () => {
+      const { klasterModule, klasterPaymaster, entryPoint, scaFactory } =
+        await setupTests();
+      const { smartAccountOwner, bob } = await getSigners();
+
+      const firstSmartAccount = await getKlasterAccount(
+        smartAccountOwner.address,
+      );
+
+      const faultySmartAccountCreationTx =
+        scaFactory.deployCounterFactualAccount(
+          klasterModule.target,
+          klasterModule.interface.encodeFunctionData("initForSmartAccount", [
+            firstSmartAccount.target, // try to set smart account as an owner of the new smart countract account
+          ]),
+          0,
+        );
+
+      await expect(faultySmartAccountCreationTx).to.be.revertedWithCustomError(
+        klasterModule,
+        "NotEOA",
+      );
     });
   });
 
