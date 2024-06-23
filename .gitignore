@@ -20,3 +20,5 @@ ignition/deployments/chain-31337
 .states
 
 **/artifacts/**
+
+flattened/

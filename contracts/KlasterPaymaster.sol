@@ -5,7 +5,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import "@account-abstraction/contracts/core/BasePaymaster.sol";
 import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import "@account-abstraction/contracts/core/Helpers.sol";
-import "hardhat/console.sol";
 
 contract KlasterPaymaster is BasePaymaster, ReentrancyGuard {
     error EmptyMessageValue();
