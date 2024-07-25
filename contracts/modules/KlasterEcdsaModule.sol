@@ -27,11 +27,7 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
     string public constant VERSION = "0.1.0";
     mapping(address => address) internal _smartAccountOwners;
 
-    event OwnershipTransferred(
-        address indexed smartAccount,
-        address indexed oldOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed smartAccount, address indexed oldOwner, address indexed newOwner);
 
     error NoOwnerRegisteredForSmartAccount(address smartAccount);
     error AlreadyInitedForSmartAccount(address smartAccount);
@@ -93,22 +89,13 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
      * @param lowerBoundTimestamp lower bound timestamp set when constructing userOp
      * @param upperBoundTimestamp upper bound timestamp set when constructing userOp
      */
-    function getUserOpHash(
-        UserOperation calldata userOp,
-        uint256 lowerBoundTimestamp,
-        uint256 upperBoundTimestamp
-    ) public view returns (bytes32 userOpHash) {
+    function getUserOpHash(UserOperation calldata userOp, uint256 lowerBoundTimestamp, uint256 upperBoundTimestamp)
+        public
+        view
+        returns (bytes32 userOpHash)
+    {
         userOpHash = keccak256(
-            bytes.concat(
-                keccak256(
-                    abi.encode(
-                        userOp.hash(),
-                        lowerBoundTimestamp,
-                        upperBoundTimestamp,
-                        block.chainid
-                    )
-                )
-            )
+            bytes.concat(keccak256(abi.encode(userOp.hash(), lowerBoundTimestamp, upperBoundTimestamp, block.chainid)))
         );
     }
 
@@ -120,14 +107,13 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
      *                                  1. the given userOp belongs to the merkle tree with given iTxHash
      *                                  2. the given iTxHash has been signed by the owner of this smart account
      */
-    function validateUserOp(
-        UserOperation calldata userOp,
-        bytes32 userOpHash
-    ) external view virtual returns (uint256) {
-        (bytes memory sigBytes, ) = abi.decode(
-            userOp.signature,
-            (bytes, address)
-        );
+    function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash)
+        external
+        view
+        virtual
+        returns (uint256)
+    {
+        (bytes memory sigBytes,) = abi.decode(userOp.signature, (bytes, address));
 
         (
             bytes32 iTxHash,
@@ -137,11 +123,7 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
             bytes memory userEcdsaSignature
         ) = abi.decode(sigBytes, (bytes32, bytes32[], uint48, uint48, bytes));
 
-        bytes32 calculatedUserOpHash = getUserOpHash(
-            userOp,
-            lowerBoundTimestamp,
-            upperBoundTimestamp
-        );
+        bytes32 calculatedUserOpHash = getUserOpHash(userOp, lowerBoundTimestamp, upperBoundTimestamp);
         if (!_validateUserOpHash(calculatedUserOpHash, iTxHash, proof)) {
             return SIG_VALIDATION_FAILED;
         }
@@ -150,12 +132,7 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
             return SIG_VALIDATION_FAILED;
         }
 
-        return
-            _packValidationData(
-                false,
-                upperBoundTimestamp,
-                lowerBoundTimestamp
-            );
+        return _packValidationData(false, upperBoundTimestamp, lowerBoundTimestamp);
     }
 
     /**
@@ -165,12 +142,14 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
      * @param moduleSignature Signature to be validated.
      * @return EIP1271_MAGIC_VALUE if signature is valid, 0xffffffff otherwise.
      */
-    function isValidSignature(
-        bytes32 dataHash,
-        bytes memory moduleSignature
-    ) public view virtual override returns (bytes4) {
-        return
-            isValidSignatureForAddress(dataHash, moduleSignature, msg.sender);
+    function isValidSignature(bytes32 dataHash, bytes memory moduleSignature)
+        public
+        view
+        virtual
+        override
+        returns (bytes4)
+    {
+        return isValidSignatureForAddress(dataHash, moduleSignature, msg.sender);
     }
 
     /**
@@ -181,11 +160,12 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
      * @param smartAccount expected signer Smart Account address.
      * @return EIP1271_MAGIC_VALUE if signature is valid, 0xffffffff otherwise.
      */
-    function isValidSignatureForAddress(
-        bytes32 dataHash,
-        bytes memory moduleSignature,
-        address smartAccount
-    ) public view virtual returns (bytes4) {
+    function isValidSignatureForAddress(bytes32 dataHash, bytes memory moduleSignature, address smartAccount)
+        public
+        view
+        virtual
+        returns (bytes4)
+    {
         if (_verifySignature(dataHash, moduleSignature, smartAccount)) {
             return EIP1271_MAGIC_VALUE;
         }
@@ -196,20 +176,17 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
      * @dev Transfers ownership for smartAccount and emits an event
      * @param newOwner Smart Account address.
      */
-    function _transferOwnership(
-        address smartAccount,
-        address newOwner
-    ) internal {
+    function _transferOwnership(address smartAccount, address newOwner) internal {
         address _oldOwner = _smartAccountOwners[smartAccount];
         _smartAccountOwners[smartAccount] = newOwner;
         emit OwnershipTransferred(smartAccount, _oldOwner, newOwner);
     }
 
-    function _validateUserOpHash(
-        bytes32 userOpHash,
-        bytes32 iTxHash,
-        bytes32[] memory proof
-    ) private pure returns (bool) {
+    function _validateUserOpHash(bytes32 userOpHash, bytes32 iTxHash, bytes32[] memory proof)
+        private
+        pure
+        returns (bool)
+    {
         return MerkleProof.verify(proof, iTxHash, userOpHash);
     }
 
@@ -224,19 +201,17 @@ contract KlasterEcdsaModule is BaseAuthorizationModule {
      * @param smartAccount expected signer Smart Account address.
      * @return true if signature is valid, false otherwise.
      */
-    function _verifySignature(
-        bytes32 dataHash,
-        bytes memory signature,
-        address smartAccount
-    ) internal view returns (bool) {
+    function _verifySignature(bytes32 dataHash, bytes memory signature, address smartAccount)
+        internal
+        view
+        returns (bool)
+    {
         address expectedSigner = _smartAccountOwners[smartAccount];
         if (expectedSigner == address(0)) {
             revert NoOwnerRegisteredForSmartAccount(smartAccount);
         }
         if (signature.length < 65) revert WrongSignatureLength();
-        address recovered = (dataHash.toEthSignedMessageHash()).recover(
-            signature
-        );
+        address recovered = (dataHash.toEthSignedMessageHash()).recover(signature);
         if (expectedSigner == recovered) {
             return true;
         }

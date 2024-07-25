@@ -25,3 +25,4 @@ flattened/
 artifacts/
 build-info/
 **.jsonl
+deployments/

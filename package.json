@@ -25,8 +25,15 @@
     "typechain": "^8.3.2"
   },
   "dependencies": {
+    "account-abstraction-v7": "npm:@account-abstraction/contracts@0.7.0",
     "@account-abstraction/contracts": "0.6.0",
     "@openzeppelin/contracts": "4.9.3",
+    "openzeppelin-contracts-v5": "npm:@openzeppelin/contracts@5.0.2",
     "bullmq": "^5.8.2"
+  },
+  "overrides": {
+    "account-abstraction-v7": {
+      "@openzeppelin/contracts": "5.0.2"
+    }
   }
 }
