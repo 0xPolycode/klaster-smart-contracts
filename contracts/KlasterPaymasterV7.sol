@@ -61,7 +61,7 @@ contract KlasterPaymasterV7 is BasePaymaster, ReentrancyGuard {
             revert InsufficientBalance();
         }
         (uint256 maxGasLimit, uint256 nodeOperatorPremium) =
-            abi.decode(userOp.paymasterAndData[20:], (uint256, uint256));
+            abi.decode(userOp.paymasterAndData[PAYMASTER_DATA_OFFSET:], (uint256, uint256));
 
         return (abi.encode(userOp.sender, userOp.unpackMaxFeePerGas(), maxGasLimit, nodeOperatorPremium), 0);
     }
