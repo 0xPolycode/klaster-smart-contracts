@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.17;
 
-library RLPReader {
+library RLPDecoder {
+
     uint8 constant STRING_SHORT_START = 0x80;
     uint8 constant STRING_LONG_START = 0xb8;
     uint8 constant LIST_SHORT_START = 0xc0;
@@ -12,37 +13,7 @@ library RLPReader {
         uint256 len;
         uint256 memPtr;
     }
-
-    struct Iterator {
-        RLPItem item; // Item that's being iterated over.
-        uint256 nextPtr; // Position of the next item in the list.
-    }
-
-    /*
-     * @dev Returns the next element in the iteration. Reverts if it has not next element.
-     * @param self The iterator.
-     * @return The next element in the iteration.
-     */
-    function next(Iterator memory self) internal pure returns (RLPItem memory) {
-        require(hasNext(self));
-
-        uint256 ptr = self.nextPtr;
-        uint256 itemLength = _itemLength(ptr);
-        self.nextPtr = ptr + itemLength;
-
-        return RLPItem(itemLength, ptr);
-    }
-
-    /*
-     * @dev Returns true if the iteration has more elements.
-     * @param self The iterator.
-     * @return true if the iteration has more elements.
-     */
-    function hasNext(Iterator memory self) internal pure returns (bool) {
-        RLPItem memory item = self.item;
-        return self.nextPtr < item.memPtr + item.len;
-    }
-
+    
     /*
      * @param item RLP encoded bytes
      */
@@ -53,25 +24,6 @@ library RLPReader {
         }
 
         return RLPItem(item.length, memPtr);
-    }
-
-    /*
-     * @dev Create an iterator. Reverts if item is not a list.
-     * @param self The RLP item.
-     * @return An 'Iterator' over the item.
-     */
-    function iterator(RLPItem memory self) internal pure returns (Iterator memory) {
-        require(isList(self));
-
-        uint256 ptr = self.memPtr + _payloadOffset(self.memPtr);
-        return Iterator(self, ptr);
-    }
-
-    /*
-     * @param the RLP item.
-     */
-    function rlpLen(RLPItem memory item) internal pure returns (uint256) {
-        return item.len;
     }
 
     /*
@@ -127,75 +79,7 @@ library RLPReader {
         return true;
     }
 
-    /*
-     * @dev A cheaper version of keccak256(toRlpBytes(item)) that avoids copying memory.
-     * @return keccak256 hash of RLP encoded bytes.
-     */
-    function rlpBytesKeccak256(RLPItem memory item) internal pure returns (bytes32) {
-        uint256 ptr = item.memPtr;
-        uint256 len = item.len;
-        bytes32 result;
-        assembly {
-            result := keccak256(ptr, len)
-        }
-        return result;
-    }
-
-    /*
-     * @dev A cheaper version of keccak256(toBytes(item)) that avoids copying memory.
-     * @return keccak256 hash of the item payload.
-     */
-    function payloadKeccak256(RLPItem memory item) internal pure returns (bytes32) {
-        (uint256 memPtr, uint256 len) = payloadLocation(item);
-        bytes32 result;
-        assembly {
-            result := keccak256(memPtr, len)
-        }
-        return result;
-    }
-
     /** RLPItem conversions into data types **/
-
-    // @returns raw rlp encoding in bytes
-    function toRlpBytes(RLPItem memory item) internal pure returns (bytes memory) {
-        bytes memory result = new bytes(item.len);
-        if (result.length == 0) return result;
-
-        uint256 ptr;
-        assembly {
-            ptr := add(0x20, result)
-        }
-
-        copy(item.memPtr, ptr, item.len);
-        return result;
-    }
-
-    // any non-zero byte except "0x80" is considered true
-    function toBoolean(RLPItem memory item) internal pure returns (bool) {
-        require(item.len == 1);
-        uint256 result;
-        uint256 memPtr = item.memPtr;
-        assembly {
-            result := byte(0, mload(memPtr))
-        }
-
-        // SEE Github Issue #5.
-        // Summary: Most commonly used RLP libraries (i.e Geth) will encode
-        // "0" as "0x80" instead of as "0". We handle this edge case explicitly
-        // here.
-        if (result == 0 || result == STRING_SHORT_START) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    function toAddress(RLPItem memory item) internal pure returns (address) {
-        // 1 byte for the length prefix
-        require(item.len == 21);
-
-        return address(uint160(toUint(item)));
-    }
 
     function toUint(RLPItem memory item) internal pure returns (uint256) {
         require(item.len > 0 && item.len <= 33);
@@ -210,20 +94,6 @@ library RLPReader {
             if lt(len, 32) {
                 result := div(result, exp(256, sub(32, len)))
             }
-        }
-
-        return result;
-    }
-
-    // enforces 32 byte length
-    function toUintStrict(RLPItem memory item) internal pure returns (uint256) {
-        // one byte prefix
-        require(item.len == 33);
-
-        uint256 result;
-        uint256 memPtr = item.memPtr + 1;
-        assembly {
-            result := mload(memPtr)
         }
 
         return result;
