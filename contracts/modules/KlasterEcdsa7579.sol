@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.23;
 
 import "account-abstraction-v7/core/UserOperationLib.sol";
 import "account-abstraction-v7/interfaces/PackedUserOperation.sol";
@@ -58,15 +58,14 @@ contract KlasterEcdsa7579 is IValidator, IHook {
         override
         returns (uint256)
     {
-        bytes memory sigBytes = abi.decode(userOp.signature, (bytes));
-
+        address owner = ecdsaValidatorStorage[msg.sender].owner;
         (
             bytes32 iTxHash,
             bytes32[] memory proof,
             uint48 lowerBoundTimestamp,
             uint48 upperBoundTimestamp,
             bytes memory userEcdsaSignature
-        ) = abi.decode(sigBytes, (bytes32, bytes32[], uint48, uint48, bytes));
+        ) = abi.decode(userOp.signature, (bytes32, bytes32[], uint48, uint48, bytes));
 
         bytes32 calculatedUserOpHash = getUserOpHash(userOp, lowerBoundTimestamp, upperBoundTimestamp);
         if (!_validateUserOpHash(calculatedUserOpHash, iTxHash, proof)) {
@@ -74,7 +73,7 @@ contract KlasterEcdsa7579 is IValidator, IHook {
         }
 
         address recovered = ECDSA.recover(iTxHash, userEcdsaSignature);
-        if (recovered != userOp.sender) {
+        if (recovered != owner) {
             return VALIDATION_FAILED;
         }
 
