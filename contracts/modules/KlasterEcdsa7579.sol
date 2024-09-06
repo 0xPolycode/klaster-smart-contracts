@@ -26,6 +26,8 @@ struct ECDSAValidatorStorage {
 
 contract KlasterEcdsa7579 is IValidator, IHook {
     using UserOperationLib for PackedUserOperation;
+    using ECDSA for bytes32;
+
     event OwnerRegistered(address indexed kernel, address indexed owner);
 
     mapping(address => ECDSAValidatorStorage) public ecdsaValidatorStorage;
@@ -72,8 +74,7 @@ contract KlasterEcdsa7579 is IValidator, IHook {
             return VALIDATION_FAILED;
         }
 
-        address recovered = ECDSA.recover(iTxHash, userEcdsaSignature);
-        if (recovered != owner) {
+        if (!_validateSignature(iTxHash, userEcdsaSignature, owner)) {
             return VALIDATION_FAILED;
         }
 
@@ -132,5 +133,21 @@ contract KlasterEcdsa7579 is IValidator, IHook {
         returns (bool)
     {
         return MerkleProof.verify(proof, iTxHash, userOpHash);
+    }
+
+    function _validateSignature(bytes32 dataHash, bytes memory signature, address expectedSigner)
+        internal
+        view
+        returns (bool)
+    {
+        address recovered = (dataHash.toEthSignedMessageHash()).recover(signature);
+        if (expectedSigner == recovered) {
+            return true;
+        }
+        recovered = dataHash.recover(signature);
+        if (expectedSigner == recovered) {
+            return true;
+        }
+        return false;
     }
 }
