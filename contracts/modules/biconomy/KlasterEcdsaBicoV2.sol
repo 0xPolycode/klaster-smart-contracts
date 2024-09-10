@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {BaseAuthorizationModule} from "../../biconomy/contracts/smart-account/modules/BaseAuthorizationModule.sol";
+import {BaseAuthorizationModule} from "../../../biconomy/contracts/smart-account/modules/BaseAuthorizationModule.sol";
 import "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "@account-abstraction/contracts/core/Helpers.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";

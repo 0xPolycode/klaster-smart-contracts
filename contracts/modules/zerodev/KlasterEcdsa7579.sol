@@ -14,11 +14,11 @@ import {
     VALIDATION_FAILED,
     MODULE_TYPE_VALIDATOR,
     MODULE_TYPE_HOOK
-} from "../interfaces/IERC7579Module.sol";
+} from "../../interfaces/IERC7579Module.sol";
 import {
     ERC1271_MAGICVALUE,
     ERC1271_INVALID
-} from "../types/Constants.sol";
+} from "../../types/Constants.sol";
 
 struct ECDSAValidatorStorage {
     address owner;

@@ -8,8 +8,8 @@ import "account-abstraction-v7/core/Helpers.sol";
 import { CheckSignatures } from "@rhinestone/checknsignatures/src/CheckNSignatures.sol";
 import { LibSort } from "solady/src/utils/LibSort.sol";
 
-import "../interfaces/IERC7579Module.sol";
-import "../interfaces/ISafe.sol";
+import "../../interfaces/IERC7579Module.sol";
+import "../../interfaces/ISafe.sol";
 
 /**
  * @title Klaster Safe ERC-7579 module.
