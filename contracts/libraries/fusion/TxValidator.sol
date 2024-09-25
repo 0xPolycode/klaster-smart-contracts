@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity 0.8.23;
 
-import "../../libraries/RLPDecoder.sol";
-import "../../libraries/RLPEncoder.sol";
-import "../../libraries/BytesLib.sol";
+import "../../libraries/rlp/RLPDecoder.sol";
+import "../../libraries/rlp/RLPEncoder.sol";
+import "../../libraries/util/BytesLib.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 library TxValidator {

@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.17;
 
-import "./RLPDecoder.sol";
-import "./RLPEncoder.sol";
-import "./BytesLib.sol";
+import "../rlp/RLPDecoder.sol";
+import "../rlp/RLPEncoder.sol";
+import "../util/BytesLib.sol";
 
 library KlasterDecoder {
 
     enum UserOpSignatureType {
         OFF_CHAIN,
-        ON_CHAIN
+        ON_CHAIN,
+        ERC20_PERMIT
     }
 
     uint8 constant SIG_TYPE_OFF_CHAIN = 0x00;
     uint8 constant SIG_TYPE_ON_CHAIN = 0x01;
+    uint8 constant SIG_TYPE_ERC20_PERMIT = 0x02;
 
     uint8 constant LEGACY_TX_TYPE = 0x00;
     uint8 constant EIP1559_TX_TYPE = 0x02;
@@ -67,8 +69,13 @@ library KlasterDecoder {
                 UserOpSignatureType.ON_CHAIN,
                 sig
             );
+        } else if (uint8(self[0]) == SIG_TYPE_ERC20_PERMIT) {
+            return UserOpSignature(
+                UserOpSignatureType.ERC20_PERMIT,
+                sig
+            );
         } else {
-            revert("KlasterDecoder:: invalid userOp sig type. Expected 0x00 for off-chain or 0x01");
+            revert("KlasterDecoder:: invalid userOp sig type. Expected prefix 0x00 for off-chain, 0x01 for on-chain or 0x02 for erc20 permit itx hash signature.");
         }
     }
 
