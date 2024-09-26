@@ -121,11 +121,12 @@ contract FusionValidator is IValidator, IHook {
         view
         returns (bool)
     {
-        address recovered = (dataHash.toEthSignedMessageHash()).recover(signature);
+        address recovered;
+        (recovered, ) = (dataHash.toEthSignedMessageHash()).tryRecover(signature);
         if (expectedSigner == recovered) {
             return true;
         }
-        recovered = dataHash.recover(signature);
+        (recovered, ) = dataHash.tryRecover(signature);
         if (expectedSigner == recovered) {
             return true;
         }

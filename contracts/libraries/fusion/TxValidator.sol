@@ -62,7 +62,7 @@ library TxValidator {
      *                     If no hash found exception is thrown.
      * @param expectedSigner Signer expected to be recovered when decoding the signed transaction and recovering the signer.
      */
-    function validate(bytes memory userOpSignature, bytes32 expectedHash, address expectedSigner) external pure returns (bool) {
+    function validate(bytes memory userOpSignature, bytes32 expectedHash, address expectedSigner) internal pure returns (bool) {
         TxData memory decodedTx = decodeTx(userOpSignature);
         
         if (decodedTx.appendedHash != expectedHash) {

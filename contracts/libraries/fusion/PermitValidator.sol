@@ -51,7 +51,7 @@ library PermitValidator {
      *                     If no hash found exception is thrown.
      * @param expectedSigner Signer expected to be recovered when decoding the signed transaction and recovering the signer.
      */
-    function validate(bytes memory userOpSignature, address userOpSender, bytes32 expectedHash, address expectedSigner) external returns (bool) {
+    function validate(bytes memory userOpSignature, address userOpSender, bytes32 expectedHash, address expectedSigner) internal returns (bool) {
         DecodedErc20PermitSig memory decodedSig = abi.decode(userOpSignature, (DecodedErc20PermitSig));
         
         if (decodedSig.appendedHash != expectedHash) {
