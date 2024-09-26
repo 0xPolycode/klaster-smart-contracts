@@ -73,7 +73,7 @@ library PermitValidator {
         );
 
         bytes32 signedDataHash = _hashTypedDataV4(structHash, decodedSig.token.DOMAIN_SEPARATOR());
-        bytes memory signature = abi.encodePacked(decodedSig.r, decodedSig.s, decodedSig.v);
+        bytes memory signature = abi.encodePacked(decodedSig.r, decodedSig.s, vAdjusted);
         
         address recovered = (signedDataHash.toEthSignedMessageHash()).recover(signature);
         if (expectedSigner != recovered) {
