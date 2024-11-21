@@ -122,14 +122,7 @@ contract KlasterEcdsaModuleEoaSupport is BaseAuthorizationModule {
         (bytes memory sigBytes,) = abi.decode(userOp.signature, (bytes, address));
         
         KlasterDecoder.UserOpSignature memory klasterSig = sigBytes.decodeSignature();
-
-        // bytes32 signedDataHash;
-        // bytes32 itxHash;
-        // bytes32[] memory proof;
-        // uint48 lowerBoundTimestamp;
-        // uint48 upperBoundTimestamp;
-        // bytes memory userEcdsaSignature;
-
+        
         if (klasterSig.signatureType == KlasterDecoder.UserOpSignatureType.OFF_CHAIN) {
             return _validateOffChainUserOp(userOp, klasterSig.signature);
         }
@@ -140,17 +133,6 @@ contract KlasterEcdsaModuleEoaSupport is BaseAuthorizationModule {
             return _validateErc20PermitUserOp(userOp, klasterSig.signature);
         }
         else { revert("KlasterEcdsaModuleEoaSupport:: invalid userOp sig type"); }
-
-        // bytes32 calculatedUserOpHash = getUserOpHash(userOp, lowerBoundTimestamp, upperBoundTimestamp);
-        // if (!_validateUserOpHash(calculatedUserOpHash, itxHash, proof)) {
-        //     return SIG_VALIDATION_FAILED;
-        // }
-
-        // if (!_verifySignature(signedDataHash, userEcdsaSignature, userOp.sender)) {
-        //     return SIG_VALIDATION_FAILED;
-        // }
-
-        // return _packValidationData(false, upperBoundTimestamp, lowerBoundTimestamp);
     }
 
     function _validateOffChainUserOp(UserOperation calldata userOp, bytes memory signature) public view returns (uint256) {
@@ -219,7 +201,7 @@ contract KlasterEcdsaModuleEoaSupport is BaseAuthorizationModule {
 
         bytes32 structHash = keccak256(
             abi.encode(
-                decodedSig.token.PERMIT_TYPEHASH(),
+                decodedSig.permitTypehash,
                 owner,
                 userOp.sender,
                 decodedSig.amount,
@@ -227,7 +209,7 @@ contract KlasterEcdsaModuleEoaSupport is BaseAuthorizationModule {
                 deadline
             )
         );
-        bytes32 signedDataHash = _hashTypedDataV4(structHash, decodedSig.token.DOMAIN_SEPARATOR());
+        bytes32 signedDataHash = _hashTypedDataV4(structHash, decodedSig.domainSeparator);
         if (!_verifySignature(signedDataHash, abi.encodePacked(decodedSig.r, decodedSig.s, vAdjusted), userOp.sender)) {
             return SIG_VALIDATION_FAILED;
         }
@@ -351,6 +333,8 @@ contract KlasterEcdsaModuleEoaSupport is BaseAuthorizationModule {
 
    struct DecodedErc20PermitSig {
         IERC20Permit token;
+        bytes32 domainSeparator;
+        bytes32 permitTypehash;
         uint256 amount;
         uint256 chainId;
         uint256 nonce;
